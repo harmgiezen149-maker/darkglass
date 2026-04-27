@@ -78,6 +78,19 @@ main {
   gap: 1.25rem;
 }
 
+.text-area {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+.field-label-opt {
+  font-size: 0.55rem;
+  color: var(--text-dimmer);
+  letter-spacing: 0.1em;
+  font-weight: 400;
+  text-transform: none;
+}
+
 .panel-label {
   font-family: var(--font-a);
   font-size: 0.65rem;
