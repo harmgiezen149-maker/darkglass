@@ -51,7 +51,7 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + 'Ignissor (Darkglass multiband compressor)\n'
   + '  Parameters: Low Threshold (-60 tot 0 dB), Mid Threshold (-60 tot 0 dB), High Threshold (-60 tot 0 dB), Ratio (1:1-20:1), Attack (1-100 ms), Release (10-500 ms), Gain (0-24 dB)\n\n'
   + 'Luminal FET Compressor (UA 1176-stijl)\n'
-  + '  Parameters: Threshold (-60 tot 0 dB), Ratio (2:1/4:1/8:1/12:1/20:1), Attack (1-10 ms), Release (50-1000 ms), Makeup Gain (0-24 dB), Blend (0-100%)\n\n'
+  + '  Parameters: Input (0-10), Output (0-10), Attack (0-10), Release (0-10), Ratio (4:1/8:1/12:1/20:1/All), Blend (0-100%)\n\n'
   + 'BUS Compressor (SSL G-Bus-stijl)\n'
   + '  Parameters: Threshold (-30 tot 0 dB), Ratio (2:1/4:1/10:1), Attack (1/3/10/30/100 ms), Release (100/200/400 ms of Auto), Makeup Gain (0-24 dB)\n\n'
   + 'Compressor/Limiter (algemeen)\n'
