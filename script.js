@@ -224,7 +224,9 @@ function checkBSnaar(tekst) {
 // SIGNAALCHAIN RENDERER
 // =====================
 function renderChainRegel(chainStr) {
-  var blokken = chainStr.split('>').map(function(b) { return b.trim(); }).filter(Boolean);
+  // Ondersteun zowel > als → als scheidingsteken
+  var normalized = chainStr.replace(/→/g, '>').replace(/\->/g, '>');
+  var blokken = normalized.split('>').map(function(b) { return b.trim(); }).filter(Boolean);
   var html = '';
   blokken.forEach(function(b, idx) {
     html += '<span class="chain-block">' + b + '</span>';
@@ -329,6 +331,12 @@ function toHtml(t) {
         chainHtml += '<div class="chain-row">' + renderChainRegel(r.replace('CHAIN:', '').trim()) + '</div>';
       } else if (r.startsWith('MERGE_NAAR:')) {
         chainHtml += '<div class="chain-row"><span class="chain-merge">⇣ MERGE</span>' + renderChainRegel(r.replace('MERGE_NAAR:', '').trim()) + '</div>';
+      } else if (r.indexOf('→') !== -1 || r.indexOf('>') !== -1) {
+        // Fallback: gewone tekstregel met pijlen = chain
+        chainHtml += '<div class="chain-row">' + renderChainRegel(r) + '</div>';
+      } else if (r === 'SERIEEL:' || r === 'PARALLEL:') {
+        var isParallel = r.startsWith('PARALLEL');
+        chainHtml += '<div class="chain-row"><span class="parallel-badge" style="' + (isParallel ? '' : 'border-color:var(--accent);color:var(--accent)') + '">' + (isParallel ? '⇄ PARALLEL ROUTING' : '→ SERIEEL') + '</span></div>';
       } else {
         chainHtml += '<p style="font-size:0.75rem;color:var(--text-dim);margin:0.25rem 0">' + r + '</p>';
       }
