@@ -295,9 +295,9 @@ footer {
 }
 .setting-param {
   font-family: var(--font-a);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   letter-spacing: 0.12em;
-  color: var(--text);
+  color: #ffffff;
   text-transform: uppercase;
   font-weight: 600;
 }
