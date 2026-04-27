@@ -1,5 +1,5 @@
 var selectedBass = 'spector';
-var history = [];
+var chatHistory = [];
 var context = '';
 
 // Bass buttons
@@ -42,7 +42,7 @@ function analyzeTone() {
 
   var userMsg = 'Ik wil de bastone van "' + song + '" van ' + artist + ' namaken met mijn ' + bassLabel + ' en de Darkglass Anagram. Geef me een volledig preset-plan met blokken, volgorde, eventuele parallel routing, en per blok exacte instellingen met uitleg.';
 
-  history = [{ role: 'user', content: userMsg }];
+  chatHistory = [{ role: 'user', content: userMsg }];
   context = artist + ' - ' + song + ' | ' + bassLabel;
 
   fetch('/api/chat', {
@@ -53,7 +53,7 @@ function analyzeTone() {
   .then(function(r) { return r.json(); })
   .then(function(d) {
     if (d.error) throw new Error(d.error);
-    history.push({ role: 'assistant', content: d.content });
+    chathistory.push({ role: 'assistant', content: d.content });
     document.getElementById('outputContent').innerHTML = toHtml(d.content);
     document.getElementById('chatPanel').classList.remove('hidden');
     document.getElementById('chatMessages').innerHTML = '';
@@ -75,7 +75,7 @@ function sendChat() {
   if (!msg) return;
   input.value = '';
   addMsg('user', msg);
-  history.push({ role: 'user', content: msg });
+  chathistory.push({ role: 'user', content: msg });
 
   var tid = 'typing' + Date.now();
   addMsg('assistant', '...', tid);
@@ -85,12 +85,12 @@ function sendChat() {
   fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: history, system: system })
+    body: JSON.stringify({ messages: chathistory, system: system })
   })
   .then(function(r) { return r.json(); })
   .then(function(d) {
     if (d.error) throw new Error(d.error);
-    history.push({ role: 'assistant', content: d.content });
+    chathistory.push({ role: 'assistant', content: d.content });
     var el = document.getElementById(tid);
     if (el) el.querySelector('.msg-bubble').innerHTML = toHtmlSimple(d.content);
   })
