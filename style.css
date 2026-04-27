@@ -295,17 +295,18 @@ footer {
 }
 .setting-param {
   font-family: var(--font-a);
-  font-size: 0.58rem;
-  letter-spacing: 0.15em;
-  color: var(--text-dimmer);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--text);
   text-transform: uppercase;
+  font-weight: 600;
 }
 .setting-waarde {
   font-family: var(--font-b);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   color: var(--accent2);
   font-weight: 700;
-  margin-top: 1px;
+  margin-top: 3px;
 }
 .blok-uitleg {
   font-size: 0.76rem;
