@@ -125,9 +125,10 @@ function toHtml(t) {
   function sluitBlok() {
     if (!inBlok) return;
     var settingsHtml = blokSettings.map(function(s) {
-      var delen = s.split(':');
-      var param = delen[0] ? delen[0].trim().replace(/^- /, '') : '';
-      var waarde = delen.slice(1).join(':').trim();
+      var idx = s.indexOf(':');
+      if (idx === -1) return '';
+      var param = s.substring(0, idx).replace(/^- /, '').trim();
+      var waarde = s.substring(idx + 1).trim();
       return '<div class="setting-item"><div class="setting-param">' + param + '</div><div class="setting-waarde">' + waarde + '</div></div>';
     }).join('');
     html += '<div class="blok-kaart">';
@@ -138,6 +139,76 @@ function toHtml(t) {
     html += '</div></div>';
     inBlok = false; blokNaam = ''; blokSettings = []; blokUitleg = '';
   }
+
+  function renderChainRow(label, chainStr) {
+    var blokken = chainStr.split('>').map(function(b) { return b.trim(); }).filter(Boolean);
+    var rowHtml = '<div class="chain-row">';
+    if (label) rowHtml += '<span class="chain-label">' + label + '</span>';
+    blokken.forEach(function(b, idx) {
+      rowHtml += '<span class="chain-block">' + b + '</span>';
+      if (idx < blokken.length - 1) rowHtml += '<span class="chain-arrow">→</span>';
+    });
+    rowHtml += '</div>';
+    return rowHtml;
+  }
+
+  var inChain = false;
+  var chainHtml = '';
+
+  while (i < regels.length) {
+    var r = regels[i].trim();
+
+    if (r.startsWith('## SIGNAALCHAIN')) {
+      sluitBlok();
+      if (inChain) { html += '<div class="chain-container">' + chainHtml + '</div>'; chainHtml = ''; inChain = false; }
+      html += '<div class="sectie-titel">SIGNAALCHAIN</div>';
+      inChain = true;
+      chainHtml = '';
+    } else if (r.startsWith('## ')) {
+      if (inChain) { html += '<div class="chain-container">' + chainHtml + '</div>'; chainHtml = ''; inChain = false; }
+      sluitBlok();
+      var sectieNaam = r.replace('## ', '');
+      if (sectieNaam === 'FINE-TUNE TIPS') {
+        html += '<div class="sectie-titel">FINE-TUNE TIPS</div><div class="tip-box">';
+      } else {
+        html += '<div class="sectie-titel">' + sectieNaam + '</div>';
+      }
+    } else if (inChain && r.startsWith('CHAIN_A:')) {
+      chainHtml += renderChainRow('A', r.replace('CHAIN_A:', '').trim());
+    } else if (inChain && r.startsWith('CHAIN_B:')) {
+      chainHtml += renderChainRow('B', r.replace('CHAIN_B:', '').trim());
+    } else if (inChain && r.startsWith('MERGE_NAAR:')) {
+      chainHtml += '<div class="chain-row"><span class="chain-merge">⇣ MERGE</span>' + renderChainRow('', r.replace('MERGE_NAAR:', '').trim()).replace('<div class="chain-row">', '').replace('</div>', '') + '</div>';
+    } else if (inChain && (r.startsWith('SERIEEL') || r.startsWith('PARALLEL'))) {
+      var badge = r.startsWith('PARALLEL') ? '<span class="parallel-badge">⇄ PARALLEL ROUTING</span>' : '<span class="parallel-badge" style="border-color:var(--accent);color:var(--accent)">→ SERIEEL</span>';
+      chainHtml += badge;
+    } else if (inChain && r.startsWith('CHAIN:')) {
+      chainHtml += renderChainRow('', r.replace('CHAIN:', '').trim());
+    } else if (r.startsWith('### ')) {
+      if (inChain) { html += '<div class="chain-container">' + chainHtml + '</div>'; chainHtml = ''; inChain = false; }
+      sluitBlok();
+      blokTeller++;
+      inBlok = true;
+      blokNaam = r.replace('### ', '');
+    } else if (inBlok && r === 'INSTELLINGEN:') {
+      // skip
+    } else if (inBlok && r.startsWith('- ')) {
+      blokSettings.push(r);
+    } else if (inBlok && r.startsWith('UITLEG:')) {
+      blokUitleg = r.replace('UITLEG:', '').trim();
+    } else if (!inBlok && !inChain && r !== '') {
+      html += '<p>' + r.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</p>';
+    } else if (inChain && r !== '') {
+      chainHtml += '<p style="font-size:0.75rem;color:var(--text-dim);margin:0.25rem 0">' + r + '</p>';
+    }
+    i++;
+  }
+
+  if (inChain) html += '<div class="chain-container">' + chainHtml + '</div>';
+  sluitBlok();
+  if (t.includes('## FINE-TUNE TIPS')) html += '</div>';
+  return html;
+}
 
   while (i < regels.length) {
     var r = regels[i].trim();
