@@ -36,8 +36,8 @@ function analyzeTone() {
   document.getElementById('outputContent').innerHTML = '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>Bastone analyseren...</p></div>';
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 
-  var system = 'Je bent een expert in bas-gitaar sound design, specifiek voor de Darkglass Anagram multieffect pedaal. Je kent alle beschikbare blokken: Input Gain, Compressor (Threshold/Ratio/Attack/Release), High-Pass Filter, Low-Pass Filter, Envelope Filter, Parametric EQ (5-band), Graphic EQ, B3K Ultra drive, Microtubes B7K overdrive, Alpha-Omega Ultra (dual channel distortion), Cab Simulator/IR Loader, Chorus, Flanger, Phaser, Tremolo, Vibrato, Delay, Reverb, Octaver, Pitch Shifter, Noise Gate, Output Volume, Parallel Blend. Geef altijd: 1) Korte analyse van de bastone van het nummer, 2) Signaalchain met blokken in volgorde (of parallel waar nodig), 3) Concrete instellingen per blok met cijfers, 4) Uitleg van elke keuze, 5) Fine-tune tips. Antwoord in het Nederlands. Gebruik ## voor hoofdsecties en ### voor blok-titels.';
-
+  var system = 'Je bent een expert in bas-gitaar sound design voor de Darkglass Anagram. Structureer je antwoord ALTIJD exact zo:\n\n## TONE ANALYSE\n[korte analyse van de bastone]\n\n## SIGNAALCHAIN\n[beschrijf de volgorde, en geef aan als er parallel routing nodig is met: PARALLEL: ja/nee en uitleg]\n\n## BLOKKEN\n\nGeef elk blok in dit exacte formaat:\n### BLOKNAAM\nINSTELLINGEN:\n- Parameter: waarde\n- Parameter: waarde\nUITLEG: [één zin waarom deze instelling]\n\n## FINE-TUNE TIPS\n[3 concrete tips]\n\nAntwoord in het Nederlands. Wees specifiek met cijfers en percentages.';
+ 
   var userMsg = 'Ik wil de bastone van "' + song + '" van ' + artist + ' namaken met mijn ' + bassLabel + ' en de Darkglass Anagram. Geef me een volledig preset-plan met blokken, volgorde, eventuele parallel routing, en per blok exacte instellingen met uitleg.';
 
   chatHistory = [{ role: 'user', content: userMsg }];
@@ -113,19 +113,64 @@ function addMsg(role, text, id) {
 }
 
 function toHtml(t) {
-  return t
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m) { return '<ul>' + m + '</ul>'; })
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/^(?!<[hup])/gm, '<p>')
-    .replace(/<p><\/p>/g, '');
-}
+  var blokTeller = 0;
+  var html = '';
+  var regels = t.split('\n');
+  var i = 0;
+  var inBlok = false;
+  var blokNaam = '';
+  var blokSettings = [];
+  var blokUitleg = '';
 
+  function sluitBlok() {
+    if (!inBlok) return;
+    var settingsHtml = blokSettings.map(function(s) {
+      var delen = s.split(':');
+      var param = delen[0] ? delen[0].trim().replace(/^- /, '') : '';
+      var waarde = delen.slice(1).join(':').trim();
+      return '<div class="setting-item"><div class="setting-param">' + param + '</div><div class="setting-waarde">' + waarde + '</div></div>';
+    }).join('');
+    html += '<div class="blok-kaart">';
+    html += '<div class="blok-titel"><span class="blok-nummer">' + blokTeller + '</span><span class="blok-naam">' + blokNaam + '</span></div>';
+    html += '<div class="blok-body">';
+    if (settingsHtml) html += '<div class="blok-settings">' + settingsHtml + '</div>';
+    if (blokUitleg) html += '<div class="blok-uitleg">' + blokUitleg + '</div>';
+    html += '</div></div>';
+    inBlok = false; blokNaam = ''; blokSettings = []; blokUitleg = '';
+  }
+
+  while (i < regels.length) {
+    var r = regels[i].trim();
+    if (r.startsWith('## ')) {
+      sluitBlok();
+      html += '<div class="sectie-titel">' + r.replace('## ', '') + '</div>';
+    } else if (r.startsWith('### ')) {
+      sluitBlok();
+      blokTeller++;
+      inBlok = true;
+      blokNaam = r.replace('### ', '');
+    } else if (inBlok && r.startsWith('INSTELLINGEN:')) {
+      // skip header
+    } else if (inBlok && r.startsWith('- ') && !r.startsWith('UITLEG:')) {
+      blokSettings.push(r);
+    } else if (inBlok && r.startsWith('UITLEG:')) {
+      blokUitleg = r.replace('UITLEG:', '').trim();
+    } else if (r.startsWith('PARALLEL:')) {
+      html += '<div class="parallel-badge">⇄ ' + r + '</div>';
+    } else if (r.startsWith('## FINE-TUNE') || (!inBlok && r !== '')) {
+      if (r.startsWith('## FINE-TUNE')) {
+        html += '<div class="sectie-titel">FINE-TUNE TIPS</div><div class="tip-box">';
+      } else if (!inBlok) {
+        html += '<p>' + r.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') + '</p>';
+      }
+    }
+    i++;
+  }
+  sluitBlok();
+  // Sluit tip-box als die open is
+  if (t.includes('## FINE-TUNE')) html += '</div>';
+  return html;
+}
 function toHtmlSimple(t) {
   return t
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
