@@ -4,6 +4,7 @@
 var selectedBass = 'spector';
 var chatHistory = [];
 var chatContext = '';
+var currentPresetData = null; // huidige preset voor opslaan
 
 // =====================
 // BASS SELECTIE
@@ -51,7 +52,7 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + 'Ignissor (Darkglass multiband compressor)\n'
   + '  Parameters: Low Threshold (-60 tot 0 dB), Mid Threshold (-60 tot 0 dB), High Threshold (-60 tot 0 dB), Ratio (1:1-20:1), Attack (1-100 ms), Release (10-500 ms), Gain (0-24 dB)\n\n'
   + 'Luminal FET Compressor (UA 1176-stijl)\n'
-  + '  Parameters: Input (0.0-10.0), Output (0.0-10.0), Attack (0.0-10.0), Release (0.0-10.0), Ratio (4:1/8:1/12:1/20:1/All), Blend (0-100%)\n\n'
+  + '  Parameters: Input (0-10), Output (0-10), Attack (0-10), Release (0-10), Ratio (4:1/8:1/12:1/20:1/All), Blend (0-100%)\n\n'
   + 'BUS Compressor (SSL G-Bus-stijl)\n'
   + '  Parameters: Threshold (-30 tot 0 dB), Ratio (2:1/4:1/10:1), Attack (1/3/10/30/100 ms), Release (100/200/400 ms of Auto), Makeup Gain (0-24 dB)\n\n'
   + 'Compressor/Limiter (algemeen)\n'
@@ -74,7 +75,7 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + '=== CABINET / IR ===\n'
   + 'IR Loader\n'
   + '  Parameters: IR File (naam van het geladen kabinet), Level (0-100%), Low Cut (20-500 Hz), High Cut (2kHz-20kHz)\n'
-  + '  Beschikbare IR-namen in Anagram: Darkglass Neo 4x10, Modern Bass 4x10, Peggy 8x10, Jim Bass 8x10, Vintage 4x10, Vintage 2x15\n\n'
+  + '  Beschikbare IR-namen: Darkglass Neo 4x10, Modern Bass 4x10, Peggy 8x10, Jim Bass 8x10, Vintage 4x10, Vintage 2x15\n\n'
 
   + '=== EQ / FILTER BLOKKEN ===\n'
   + 'Parametric EQ\n'
@@ -120,19 +121,16 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
 
   + '=== UTILITY BLOKKEN ===\n'
   + 'Gain: Level (0-200%), Pad (-20 tot 0 dB)\n'
-  + 'Split: Split Point (Series/Parallel), Balance (0-100%)\n'
+  + 'Split: Balance (0-100%)\n'
   + 'Merge: Blend (0-100%), Pan A (L-R), Pan B (L-R)\n\n'
 
   + '=== INSTRUCTIES ===\n'
-  + 'BELANGRIJK: Zet ALTIJD als absolute eerste regel van je antwoord:\n'
-  + 'B_SNAAR_VEREIST: ja\n'
-  + 'of\n'
-  + 'B_SNAAR_VEREIST: nee\n'
-  + 'Geef "ja" als het nummer een lage B-snaar (5e snaar) vereist.\n\n'
-  + 'Gebruik ALLEEN de parameter-namen zoals hierboven vermeld. Geef waarden in het correcte bereik/formaat.\n'
+  + 'Zet ALTIJD als absolute eerste regel:\n'
+  + 'B_SNAAR_VEREIST: ja of nee\n\n'
+  + 'Gebruik ALLEEN de parameter-namen zoals hierboven vermeld.\n'
   + 'Geef GEEN parameters op die niet in het blok bestaan.\n\n'
   + 'Structureer je antwoord ALTIJD exact zo:\n\n'
-  + '## TONE ANALYSE\n[analyse van de bastone]\n\n'
+  + '## TONE ANALYSE\n[analyse]\n\n'
   + '## SIGNAALCHAIN\n'
   + 'SERIEEL of PARALLEL\n'
   + 'CHAIN_A: Blok1 > Blok2 > Blok3\n'
@@ -171,13 +169,13 @@ function analyzeTone() {
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 
   var extra = document.getElementById('extraInput').value.trim();
-
   var userMsg = 'Ik wil de bastone van "' + song + '" van ' + artist
     + ' namaken met mijn ' + bassLabel + ' en de Darkglass Anagram. Geef me een volledig preset-plan.'
     + (extra ? '\n\nExtra wensen: ' + extra : '');
 
   chatHistory = [{ role: 'user', content: userMsg }];
   chatContext = artist + ' - ' + song + ' | ' + bassLabel;
+  currentPresetData = null;
 
   fetch('/api/chat', {
     method: 'POST',
@@ -188,7 +186,16 @@ function analyzeTone() {
   .then(function(d) {
     if (d.error) throw new Error(d.error);
     chatHistory.push({ role: 'assistant', content: d.content });
-    document.getElementById('outputContent').innerHTML = toHtml(d.content);
+
+    currentPresetData = {
+      artist: artist,
+      song: song,
+      bass: bassLabel,
+      content: d.content,
+      html: toHtml(d.content)
+    };
+
+    document.getElementById('outputContent').innerHTML = currentPresetData.html;
     document.getElementById('chatPanel').classList.remove('hidden');
     document.getElementById('chatMessages').innerHTML = '';
     addMsg('assistant', 'Preset klaar! Heb je vragen of wil je de sound verder verfijnen?');
@@ -215,7 +222,6 @@ function sendChat() {
 
   addMsg('user', msg);
   chatHistory.push({ role: 'user', content: msg });
-
   addMsg('assistant', 'Preset wordt bijgewerkt...');
 
   document.getElementById('outputContent').innerHTML =
@@ -234,6 +240,12 @@ function sendChat() {
   .then(function(d) {
     if (d.error) throw new Error(d.error);
     chatHistory.push({ role: 'assistant', content: d.content });
+
+    if (currentPresetData) {
+      currentPresetData.content = d.content;
+      currentPresetData.html = toHtml(d.content);
+    }
+
     document.getElementById('outputContent').innerHTML = toHtml(d.content);
     var lastMsg = document.getElementById('chatMessages').lastElementChild;
     if (lastMsg) {
@@ -266,6 +278,109 @@ function addMsg(role, text, id) {
 }
 
 // =====================
+// OPSLAAN & LADEN
+// =====================
+function savePreset() {
+  if (!currentPresetData) { alert('Geen preset om op te slaan.'); return; }
+
+  var presets = loadAllPresets();
+  var id = Date.now().toString();
+  var datum = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  presets[id] = {
+    id: id,
+    artist: currentPresetData.artist,
+    song: currentPresetData.song,
+    bass: currentPresetData.bass,
+    content: currentPresetData.content,
+    datum: datum
+  };
+
+  localStorage.setItem('dg_presets', JSON.stringify(presets));
+  renderSavedPanel();
+
+  var btn = document.getElementById('saveBtn');
+  btn.textContent = '✓ OPGESLAGEN';
+  btn.style.color = 'var(--accent)';
+  btn.style.borderColor = 'var(--accent)';
+  setTimeout(function() {
+    btn.innerHTML = '<span>&#9632;</span> OPSLAAN';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, 2000);
+}
+
+function loadAllPresets() {
+  try {
+    var data = localStorage.getItem('dg_presets');
+    return data ? JSON.parse(data) : {};
+  } catch(e) { return {}; }
+}
+
+function loadPreset(id) {
+  var presets = loadAllPresets();
+  var p = presets[id];
+  if (!p) return;
+
+  currentPresetData = {
+    artist: p.artist,
+    song: p.song,
+    bass: p.bass,
+    content: p.content,
+    html: toHtml(p.content)
+  };
+
+  document.getElementById('outputMeta').textContent =
+    p.artist.toUpperCase() + ' — ' + p.song.toUpperCase() + ' · ' + p.bass.toUpperCase();
+  document.getElementById('outputContent').innerHTML = currentPresetData.html;
+  document.getElementById('outputPanel').classList.remove('hidden');
+  document.getElementById('chatPanel').classList.add('hidden');
+  chatHistory = [];
+  chatContext = p.artist + ' - ' + p.song + ' | ' + p.bass;
+
+  document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function deletePreset(id) {
+  var presets = loadAllPresets();
+  delete presets[id];
+  localStorage.setItem('dg_presets', JSON.stringify(presets));
+  renderSavedPanel();
+}
+
+function renderSavedPanel() {
+  var presets = loadAllPresets();
+  var keys = Object.keys(presets).sort(function(a, b) { return b - a; });
+  var panel = document.getElementById('savedPanel');
+  var list = document.getElementById('savedList');
+
+  if (keys.length === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.classList.remove('hidden');
+  list.innerHTML = keys.map(function(id) {
+    var p = presets[id];
+    return '<div class="saved-item">'
+      + '<div class="saved-item-header">'
+      + '<div>'
+      + '<div class="saved-item-title">' + p.artist + ' — ' + p.song + '</div>'
+      + '<div class="saved-item-date">' + p.bass.split('(')[0].trim() + ' · ' + p.datum + '</div>'
+      + '</div>'
+      + '<div class="saved-item-actions">'
+      + '<button class="saved-action-btn btn-load" onclick="loadPreset(\'' + id + '\')">LADEN</button>'
+      + '<button class="saved-action-btn btn-delete" onclick="deletePreset(\'' + id + '\')">✕</button>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// Laad opgeslagen presets bij opstarten
+renderSavedPanel();
+
+// =====================
 // B-SNAAR DETECTIE
 // =====================
 function checkBSnaar(tekst) {
@@ -277,11 +392,8 @@ function checkBSnaar(tekst) {
       return r.indexOf('ja') !== -1;
     }
   }
-  var keywords = [
-    'lage b-snaar', 'lage b snaar', 'b-snaar nodig', 'b-snaar vereist',
-    'vijfde snaar', '5e snaar', 'low b string', 'low-b', 'onder de e-snaar',
-    'b-snaar is noodzakelijk'
-  ];
+  var keywords = ['lage b-snaar', 'lage b snaar', 'b-snaar nodig', 'b-snaar vereist',
+    'vijfde snaar', '5e snaar', 'low b string', 'low-b', 'onder de e-snaar'];
   for (var j = 0; j < keywords.length; j++) {
     if (t.indexOf(keywords[j]) !== -1) return true;
   }
@@ -317,15 +429,12 @@ function toHtml(t) {
   var chainHtml = '';
   var inTips = false;
 
-  // B-snaar waarschuwing
   if (selectedBass === 'pbass' && checkBSnaar(t)) {
-    html += '<div class="bsnaar-warning">'
-      + '<span class="bsnaar-icon">⚠</span>'
+    html += '<div class="bsnaar-warning"><span class="bsnaar-icon">⚠</span>'
       + '<div><strong>Let op: 4-snarige bas</strong><br>'
       + 'Dit nummer maakt waarschijnlijk gebruik van een lage B-snaar. '
-      + 'Met je Fender Precision Bass (4-snarig) kun je mogelijk niet alle noten spelen zoals in het origineel. '
-      + 'Overweeg de Spector NS Ethos 5 te gebruiken.</div>'
-      + '</div>';
+      + 'Met je Fender Precision Bass kun je mogelijk niet alle noten spelen zoals in het origineel. '
+      + 'Overweeg de Spector NS Ethos 5.</div></div>';
   }
 
   function sluitBlok() {
@@ -335,16 +444,9 @@ function toHtml(t) {
       if (idx === -1) return '';
       var param = s.substring(0, idx).replace(/^-\s*/, '').trim();
       var waarde = s.substring(idx + 1).trim();
-      return '<div class="setting-item">'
-        + '<div class="setting-param">' + param + '</div>'
-        + '<div class="setting-waarde">' + waarde + '</div>'
-        + '</div>';
+      return '<div class="setting-item"><div class="setting-param">' + param + '</div><div class="setting-waarde">' + waarde + '</div></div>';
     }).join('');
-    html += '<div class="blok-kaart">'
-      + '<div class="blok-titel">'
-      + '<span class="blok-nummer">' + blokTeller + '</span>'
-      + '<span class="blok-naam">' + blokNaam + '</span>'
-      + '</div><div class="blok-body">';
+    html += '<div class="blok-kaart"><div class="blok-titel"><span class="blok-nummer">' + blokTeller + '</span><span class="blok-naam">' + blokNaam + '</span></div><div class="blok-body">';
     if (settingsHtml) html += '<div class="blok-settings">' + settingsHtml + '</div>';
     if (blokUitleg) html += '<div class="blok-uitleg">' + blokUitleg + '</div>';
     html += '</div></div>';
@@ -366,7 +468,6 @@ function toHtml(t) {
   for (var i = 0; i < regels.length; i++) {
     var r = regels[i].trim();
     if (!r) continue;
-
     if (r.toLowerCase().startsWith('b_snaar_vereist:')) continue;
 
     if (r.startsWith('## ')) {
