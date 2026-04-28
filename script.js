@@ -286,15 +286,19 @@ function savePreset() {
   var datum = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   // Check of er al een preset bestaat met dezelfde artiest/song
-  var bestaatAl = Object.values(presets).some(function(p) {
-    return p.artist === currentPresetData.artist && p.song === currentPresetData.song;
-  });
+  var bestaatAl = false;
+  for (var key in presets) {
+    if (presets[key].artist === currentPresetData.artist && presets[key].song === currentPresetData.song) {
+      bestaatAl = true;
+      break;
+    }
+  }
 
   var label = '';
   if (bestaatAl) {
-    label = window.prompt('Er bestaat al een preset voor dit nummer.\nGeef 2-3 steekwoorden voor deze versie\n(bijv: meer distortion, parallel, minder comp):', '');
-    if (label === null) return;
-    label = label.trim();
+    var input = window.prompt('Er bestaat al een preset voor dit nummer.\nGeef 2-3 steekwoorden voor deze versie\n(bijv: meer distortion, parallel, minder comp):', '');
+    if (input === null) return;
+    label = input.trim();
   }
 
   presets[id] = {
@@ -307,7 +311,13 @@ function savePreset() {
     label: label
   };
 
-  localStorage.setItem('dg_presets', JSON.stringify(presets));
+  try {
+    localStorage.setItem('dg_presets', JSON.stringify(presets));
+  } catch(e) {
+    alert('Opslaan mislukt: ' + e.message);
+    return;
+  }
+
   renderSavedPanel();
 
   var btn = document.getElementById('saveBtn');
