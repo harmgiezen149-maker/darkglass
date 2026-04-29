@@ -125,10 +125,8 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + 'Merge: Blend (0-100%), Pan A (L-R), Pan B (L-R)\n\n'
 
   + '=== INSTRUCTIES ===\n'
-  + 'Zet ALTIJD de eerste twee regels zo:\n'
-  + 'B_SNAAR_VEREIST: ja of nee\n'
-  + 'ARTIEST: [correcte officiële artiestnaam]\n'
-  + 'SONG: [correcte officiële songtitel]\n\n'
+  + 'Zet ALTIJD als absolute eerste regel:\n'
+  + 'B_SNAAR_VEREIST: ja of nee\n\n'
   + 'Gebruik ALLEEN de parameter-namen zoals hierboven vermeld.\n'
   + 'Geef GEEN parameters op die niet in het blok bestaan.\n\n'
   + 'Structureer je antwoord ALTIJD exact zo:\n\n'
@@ -189,31 +187,18 @@ function analyzeTone() {
     if (d.error) throw new Error(d.error);
     chatHistory.push({ role: 'assistant', content: d.content });
 
-// Haal gecorrigeerde artiest/song uit de AI response
-    var correctedArtist = artist;
-    var correctedSong = song;
-    var lines = d.content.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      var l = lines[i].trim();
-      if (l.startsWith('ARTIEST:')) correctedArtist = l.replace('ARTIEST:', '').trim();
-      if (l.startsWith('SONG:')) correctedSong = l.replace('SONG:', '').trim();
-    }
-
     currentPresetData = {
-      artist: correctedArtist,
-      song: correctedSong,
+      artist: artist,
+      song: song,
       bass: bassLabel,
       content: d.content
     };
-
-    document.getElementById('outputMeta').textContent =
-      correctedArtist.toUpperCase() + ' — ' + correctedSong.toUpperCase() + ' · ' + bassLabel.toUpperCase();
 
     document.getElementById('outputContent').innerHTML = toHtml(d.content);
     document.getElementById('chatPanel').classList.remove('hidden');
     document.getElementById('chatMessages').innerHTML = '';
     addMsg('assistant', 'Preset klaar! Heb je vragen of wil je de sound verder verfijnen?');
-    document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('chatPanel').scrollIntoView({ behavior: 'smooth' });
   })
   .catch(function(e) {
     document.getElementById('outputContent').innerHTML =
@@ -293,19 +278,22 @@ function addMsg(role, text, id) {
 // =====================
 // OPSLAAN & LADEN
 // =====================
+// Cache voor presets (geladen vanuit Redis)
+var presetsCache = {};
+
+// =====================
+// OPSLAAN
+// =====================
 function savePreset() {
   if (!currentPresetData) { alert('Geen preset om op te slaan.'); return; }
 
-  var presets = loadAllPresets();
   var id = Date.now().toString();
   var datum = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  // Check of er al een preset bestaat met dezelfde artiest/song
   var bestaatAl = false;
-  for (var key in presets) {
-    if (presets[key].artist === currentPresetData.artist && presets[key].song === currentPresetData.song) {
-      bestaatAl = true;
-      break;
+  for (var key in presetsCache) {
+    if (presetsCache[key].artist === currentPresetData.artist && presetsCache[key].song === currentPresetData.song) {
+      bestaatAl = true; break;
     }
   }
 
@@ -316,7 +304,7 @@ function savePreset() {
     label = input.trim();
   }
 
-  presets[id] = {
+  var preset = {
     id: id,
     artist: currentPresetData.artist,
     song: currentPresetData.song,
@@ -326,44 +314,44 @@ function savePreset() {
     label: label
   };
 
-  try {
-    localStorage.setItem('dg_presets', JSON.stringify(presets));
-  } catch(e) {
-    alert('Opslaan mislukt: ' + e.message);
-    return;
-  }
-
-  renderSavedPanel();
-
   var btn = document.getElementById('saveBtn');
-  btn.textContent = '✓ OPGESLAGEN';
-  btn.style.color = 'var(--accent)';
-  btn.style.borderColor = 'var(--accent)';
-  setTimeout(function() {
+  btn.disabled = true;
+  btn.textContent = 'OPSLAAN...';
+
+  fetch('/api/presets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preset: preset })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error(d.error);
+    presetsCache[id] = preset;
+    renderSavedPanel();
+    btn.textContent = '✓ OPGESLAGEN';
+    btn.style.color = 'var(--accent)';
+    btn.style.borderColor = 'var(--accent)';
+    setTimeout(function() {
+      btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN';
+      btn.style.color = ''; btn.style.borderColor = '';
+      btn.disabled = false;
+    }, 2000);
+  })
+  .catch(function(e) {
+    alert('Opslaan mislukt: ' + e.message);
     btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN';
-    btn.style.color = '';
-    btn.style.borderColor = '';
-  }, 2000);
+    btn.disabled = false;
+  });
 }
 
-function loadAllPresets() {
-  try {
-    var data = localStorage.getItem('dg_presets');
-    return data ? JSON.parse(data) : {};
-  } catch(e) { return {}; }
-}
-
+// =====================
+// LADEN (één preset)
+// =====================
 function loadPreset(id) {
-  var presets = loadAllPresets();
-  var p = presets[id];
+  var p = presetsCache[id];
   if (!p) return;
 
-  currentPresetData = {
-    artist: p.artist,
-    song: p.song,
-    bass: p.bass,
-    content: p.content
-  };
+  currentPresetData = { artist: p.artist, song: p.song, bass: p.bass, content: p.content };
 
   document.getElementById('outputMeta').textContent =
     p.artist.toUpperCase() + ' — ' + p.song.toUpperCase() + ' · ' + p.bass.toUpperCase();
@@ -378,17 +366,31 @@ function loadPreset(id) {
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 }
 
+// =====================
+// VERWIJDEREN
+// =====================
 function deletePreset(id) {
   if (!window.confirm('Preset verwijderen?')) return;
-  var presets = loadAllPresets();
-  delete presets[id];
-  localStorage.setItem('dg_presets', JSON.stringify(presets));
-  renderSavedPanel();
+
+  fetch('/api/presets', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: id })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error(d.error);
+    delete presetsCache[id];
+    renderSavedPanel();
+  })
+  .catch(function(e) { alert('Verwijderen mislukt: ' + e.message); });
 }
 
+// =====================
+// PANEL RENDEREN
+// =====================
 function renderSavedPanel() {
-  var presets = loadAllPresets();
-  var keys = Object.keys(presets).sort(function(a, b) { return b - a; });
+  var keys = Object.keys(presetsCache).sort(function(a, b) { return b - a; });
   var panel = document.getElementById('savedPanel');
   var list = document.getElementById('savedList');
 
@@ -399,26 +401,35 @@ function renderSavedPanel() {
 
   panel.classList.remove('hidden');
   list.innerHTML = keys.map(function(id) {
-    var p = presets[id];
+    var p = presetsCache[id];
     var subtitle = p.bass.split('(')[0].trim() + ' · ' + p.datum;
     if (p.label) subtitle += ' · ' + p.label;
     return '<div class="saved-item">'
-      + '<div class="saved-item-header">'
-      + '<div>'
+      + '<div class="saved-item-header"><div>'
       + '<div class="saved-item-title">' + p.artist + ' — ' + p.song + '</div>'
       + '<div class="saved-item-date">' + subtitle + '</div>'
-      + '</div>'
-      + '<div class="saved-item-actions">'
+      + '</div><div class="saved-item-actions">'
       + '<button class="saved-action-btn btn-load" onclick="loadPreset(\'' + id + '\')">LADEN</button>'
       + '<button class="saved-action-btn btn-delete" onclick="deletePreset(\'' + id + '\')">✕</button>'
-      + '</div>'
-      + '</div>'
-      + '</div>';
+      + '</div></div></div>';
   }).join('');
 }
 
-// Laad opgeslagen presets bij opstarten
-renderSavedPanel();
+// =====================
+// PRESETS OPHALEN BIJ OPSTARTEN
+// =====================
+function laadAllePresets() {
+  fetch('/api/presets')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error(d.error);
+    presetsCache = d.presets || {};
+    renderSavedPanel();
+  })
+  .catch(function(e) { console.error('Presets laden mislukt:', e.message); });
+}
+
+laadAllePresets();
 
 // =====================
 // B-SNAAR DETECTIE
