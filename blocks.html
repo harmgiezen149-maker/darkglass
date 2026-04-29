@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Darkglass — Blok Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --bg2: #111114;
+      --bg3: #1a1a1f;
+      --border: #2a2a32;
+      --border-bright: #3d3d4d;
+      --accent: #00e5b0;
+      --accent2: #ff4d6d;
+      --accent3: #7c5cfc;
+      --text: #e8e8f0;
+      --text-dim: #b0b0c8;
+      --text-dimmer: #9898b0;
+      --font-a: 'Oxanium', monospace;
+      --font-b: 'Space Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-b); min-height: 100vh; display: flex; flex-direction: column; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 2rem; border-bottom: 1px solid var(--border);
+      background: var(--bg2); position: sticky; top: 0; z-index: 100;
+    }
+    .logo-group { display: flex; align-items: center; gap: 0.875rem; }
+    .logo-mark { width: 40px; height: 40px; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--font-a); font-weight: 700; font-size: 0.8rem; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+    .logo-text { display: flex; flex-direction: column; }
+    .logo-title { font-family: var(--font-a); font-weight: 700; font-size: 1rem; letter-spacing: 0.2em; }
+    .logo-sub { font-size: 0.6rem; letter-spacing: 0.3em; color: var(--accent); }
+    .header-link { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); text-decoration: none; border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 4px; transition: all 0.2s; }
+    .header-link:hover { color: var(--accent); border-color: var(--accent); }
+
+    main { flex: 1; max-width: 900px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .top-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .page-title { font-family: var(--font-a); font-size: 1rem; font-weight: 700; letter-spacing: 0.2em; color: var(--text); }
+    .page-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; border-radius: 4px; font-family: var(--font-a); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.2em; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-primary { background: var(--accent); color: var(--bg); }
+    .btn-primary:hover { background: #00ffcc; }
+    .btn-primary:disabled { background: var(--border); color: var(--text-dimmer); cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: var(--accent3); border: 1px solid var(--accent3); }
+    .btn-secondary:hover { background: rgba(124,92,252,0.1); }
+    .btn-danger { background: transparent; color: var(--accent2); border: 1px solid var(--accent2); font-size: 0.65rem; padding: 0.3rem 0.6rem; }
+    .btn-danger:hover { background: rgba(255,77,109,0.1); }
+
+    .status-bar { padding: 0.75rem 1rem; border-radius: 4px; font-size: 0.75rem; letter-spacing: 0.1em; display: none; }
+    .status-bar.ok { background: rgba(0,229,176,0.1); border: 1px solid var(--accent); color: var(--accent); display: block; }
+    .status-bar.err { background: rgba(255,77,109,0.1); border: 1px solid var(--accent2); color: var(--accent2); display: block; }
+
+    .sectie-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+    .sectie-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; background: rgba(124,92,252,0.06); border-bottom: 1px solid var(--border); }
+    .sectie-naam-input { background: transparent; border: none; font-family: var(--font-a); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.2em; color: var(--accent); outline: none; width: 200px; }
+    .sectie-naam-input:focus { border-bottom: 1px solid var(--accent); }
+    .sectie-body { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.875rem; }
+
+    .blok-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; display: flex; flex-direction: column; gap: 0.625rem; }
+    .blok-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+    .field-label { font-family: var(--font-a); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dim); margin-bottom: 3px; display: block; }
+    .text-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 0.5rem 0.75rem; color: var(--text); font-family: var(--font-b); font-size: 0.75rem; outline: none; transition: border-color 0.2s; }
+    .text-input:focus { border-color: var(--accent3); }
+    .textarea-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 0.5rem 0.75rem; color: var(--text); font-family: var(--font-b); font-size: 0.72rem; outline: none; resize: vertical; min-height: 70px; line-height: 1.5; transition: border-color 0.2s; }
+    .textarea-input:focus { border-color: var(--accent3); }
+
+    .blok-actions { display: flex; justify-content: flex-end; }
+    .sectie-footer { padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); }
+
+    .add-sectie-btn { width: 100%; padding: 0.875rem; background: transparent; border: 1px dashed var(--border-bright); border-radius: 4px; color: var(--text-dim); font-family: var(--font-a); font-size: 0.7rem; letter-spacing: 0.2em; cursor: pointer; transition: all 0.2s; }
+    .add-sectie-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+    .loading-msg { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 0.8rem; letter-spacing: 0.2em; }
+
+    footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dimmer); background: var(--bg2); }
+
+    @media (max-width: 600px) {
+      main { padding: 1rem; }
+      header { padding: 1rem; }
+      .blok-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-group">
+    <div class="logo-mark">DG</div>
+    <div class="logo-text">
+      <span class="logo-title">ANAGRAM</span>
+      <span class="logo-sub">BLOK EDITOR</span>
+    </div>
+  </div>
+  <a href="/" class="header-link">← TERUG NAAR APP</a>
+</header>
+
+<main>
+  <div class="top-bar">
+    <div>
+      <div class="page-title">BLOK BEHEER</div>
+      <div class="page-sub">Beheer de beschikbare blokken en hun parameters per sectie</div>
+    </div>
+    <div style="display:flex;gap:0.75rem">
+      <button class="btn btn-secondary" onclick="resetDefaults()">HERSTEL STANDAARD</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveBlocks()">OPSLAAN</button>
+    </div>
+  </div>
+
+  <div id="statusBar" class="status-bar"></div>
+
+  <div id="blocksContainer">
+    <div class="loading-msg">Blokken laden...</div>
+  </div>
+
+  <button class="add-sectie-btn" onclick="addSectie()">+ NIEUWE SECTIE TOEVOEGEN</button>
+
+</main>
+
+<footer>DARKGLASS ANAGRAM BLOK EDITOR</footer>
+
+<script>
+var blocksData = [];
+
+// =====================
+// LADEN
+// =====================
+fetch('/api/blocks')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    blocksData = d.blocks || [];
+    renderAll();
+  })
+  .catch(function(e) {
+    document.getElementById('blocksContainer').innerHTML = '<div class="loading-msg" style="color:var(--accent2)">Fout bij laden: ' + e.message + '</div>';
+  });
+
+// =====================
+// OPSLAAN
+// =====================
+function saveBlocks() {
+  // Lees huidige staat uit de DOM
+  blocksData = readFromDom();
+
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'OPSLAAN...';
+
+  fetch('/api/blocks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blocks: blocksData })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.error) throw new Error(d.error);
+    showStatus('Blokken opgeslagen! De app gebruikt deze instellingen direct.', 'ok');
+  })
+  .catch(function(e) {
+    showStatus('Opslaan mislukt: ' + e.message, 'err');
+  })
+  .finally(function() {
+    btn.disabled = false;
+    btn.textContent = 'OPSLAAN';
+  });
+}
+
+function resetDefaults() {
+  if (!confirm('Alle blokken terugzetten naar standaard? Dit overschrijft je aanpassingen.')) return;
+  fetch('/api/blocks?reset=1')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      blocksData = d.blocks || [];
+      renderAll();
+      showStatus('Standaardinstellingen hersteld.', 'ok');
+    });
+}
+
+// =====================
+// DOM LEZEN
+// =====================
+function readFromDom() {
+  var secties = [];
+  document.querySelectorAll('.sectie-block').forEach(function(sectieEl) {
+    var sectieNaam = sectieEl.querySelector('.sectie-naam-input').value.trim();
+    var blokken = [];
+    sectieEl.querySelectorAll('.blok-item').forEach(function(blokEl) {
+      blokken.push({
+        naam: blokEl.querySelector('.blok-naam').value.trim(),
+        basis: blokEl.querySelector('.blok-basis').value.trim(),
+        parameters: blokEl.querySelector('.blok-params').value.trim()
+      });
+    });
+    if (sectieNaam) secties.push({ sectie: sectieNaam, blokken: blokken });
+  });
+  return secties;
+}
+
+// =====================
+// RENDEREN
+// =====================
+function renderAll() {
+  var container = document.getElementById('blocksContainer');
+  container.innerHTML = '';
+  blocksData.forEach(function(sectie, si) {
+    container.appendChild(renderSectie(sectie, si));
+  });
+}
+
+function renderSectie(sectie, si) {
+  var div = document.createElement('div');
+  div.className = 'sectie-block';
+  div.dataset.sectie = si;
+
+  var header = '<div class="sectie-header">'
+    + '<input class="sectie-naam-input" value="' + esc(sectie.sectie) + '" placeholder="SECTIENAAM" />'
+    + '<div style="display:flex;gap:0.5rem">'
+    + '<button class="btn btn-secondary" style="font-size:0.6rem;padding:0.3rem 0.6rem" onclick="addBlok(this)">+ BLOK</button>'
+    + '<button class="btn btn-danger" onclick="deleteSectie(this)">✕ SECTIE</button>'
+    + '</div>'
+    + '</div>';
+
+  var body = '<div class="sectie-body">';
+  (sectie.blokken || []).forEach(function(blok) {
+    body += renderBlok(blok);
+  });
+  body += '</div>';
+
+  div.innerHTML = header + body;
+  return div;
+}
+
+function renderBlok(blok) {
+  return '<div class="blok-item">'
+    + '<div class="blok-row">'
+    + '<div><label class="field-label">BLOKNAAM</label><input class="text-input blok-naam" value="' + esc(blok.naam || '') + '" placeholder="bijv. Microtubes B3K" /></div>'
+    + '<div><label class="field-label">GEBASEERD OP</label><input class="text-input blok-basis" value="' + esc(blok.basis || '') + '" placeholder="bijv. Darkglass B3K pedaal" /></div>'
+    + '</div>'
+    + '<div><label class="field-label">PARAMETERS (kommagescheiden, met waardebereik)</label>'
+    + '<textarea class="textarea-input blok-params" placeholder="bijv. Drive (0-100%), Blend (0-100%), Level (0-100%)">' + esc(blok.parameters || '') + '</textarea></div>'
+    + '<div class="blok-actions"><button class="btn btn-danger" onclick="deleteBlok(this)">✕ VERWIJDER BLOK</button></div>'
+    + '</div>';
+}
+
+// =====================
+// ACTIES
+// =====================
+function addSectie() {
+  var container = document.getElementById('blocksContainer');
+  var newSectie = { sectie: 'NIEUWE SECTIE', blokken: [] };
+  container.appendChild(renderSectie(newSectie, Date.now()));
+}
+
+function addBlok(btn) {
+  var sectieEl = btn.closest('.sectie-block');
+  var body = sectieEl.querySelector('.sectie-body');
+  var div = document.createElement('div');
+  div.innerHTML = renderBlok({ naam: '', basis: '', parameters: '' });
+  body.appendChild(div.firstChild);
+}
+
+function deleteBlok(btn) {
+  if (!confirm('Blok verwijderen?')) return;
+  btn.closest('.blok-item').remove();
+}
+
+function deleteSectie(btn) {
+  if (!confirm('Hele sectie verwijderen inclusief alle blokken?')) return;
+  btn.closest('.sectie-block').remove();
+}
+
+function showStatus(msg, type) {
+  var bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.className = 'status-bar ' + type;
+  setTimeout(function() { bar.className = 'status-bar'; }, 4000);
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+
+</body>
+</html>
