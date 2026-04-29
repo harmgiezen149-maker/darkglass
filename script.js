@@ -153,7 +153,7 @@ function analyzeTone() {
   if (!artist || !song) { alert('Vul artiest en songtitel in.'); return; }
 
   var bassLabel = selectedBass === 'spector'
-    ? 'Spector NS Ethos 5 (actief, 5-snarig, EMG-Hz pickup)'
+    ? 'Spector NS Ethos 5 (actief, 5-snarig, EMG-Hz pickup in P/HH configuratie)'
     : 'Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz pickup)';
 
   var btn = document.getElementById('analyzeBtn');
