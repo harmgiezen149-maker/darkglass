@@ -125,8 +125,10 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + 'Merge: Blend (0-100%), Pan A (L-R), Pan B (L-R)\n\n'
 
   + '=== INSTRUCTIES ===\n'
-  + 'Zet ALTIJD als absolute eerste regel:\n'
-  + 'B_SNAAR_VEREIST: ja of nee\n\n'
+  + 'Zet ALTIJD de eerste twee regels zo:\n'
+  + 'B_SNAAR_VEREIST: ja of nee\n'
+  + 'ARTIEST: [correcte officiële artiestnaam]\n'
+  + 'SONG: [correcte officiële songtitel]\n\n'
   + 'Gebruik ALLEEN de parameter-namen zoals hierboven vermeld.\n'
   + 'Geef GEEN parameters op die niet in het blok bestaan.\n\n'
   + 'Structureer je antwoord ALTIJD exact zo:\n\n'
@@ -187,12 +189,25 @@ function analyzeTone() {
     if (d.error) throw new Error(d.error);
     chatHistory.push({ role: 'assistant', content: d.content });
 
+// Haal gecorrigeerde artiest/song uit de AI response
+    var correctedArtist = artist;
+    var correctedSong = song;
+    var lines = d.content.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i].trim();
+      if (l.startsWith('ARTIEST:')) correctedArtist = l.replace('ARTIEST:', '').trim();
+      if (l.startsWith('SONG:')) correctedSong = l.replace('SONG:', '').trim();
+    }
+
     currentPresetData = {
-      artist: artist,
-      song: song,
+      artist: correctedArtist,
+      song: correctedSong,
       bass: bassLabel,
       content: d.content
     };
+
+    document.getElementById('outputMeta').textContent =
+      correctedArtist.toUpperCase() + ' — ' + correctedSong.toUpperCase() + ' · ' + bassLabel.toUpperCase();
 
     document.getElementById('outputContent').innerHTML = toHtml(d.content);
     document.getElementById('chatPanel').classList.remove('hidden');
