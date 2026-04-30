@@ -32,8 +32,8 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + 'Geef GEEN parameters op die niet in die lijst staan.\n\n'
   + 'Zet ALTIJD de eerste drie regels zo:\n'
   + 'B_SNAAR_VEREIST: ja of nee\n'
-  + 'ARTIEST: [correcte officiële artiestnaam]\n'
-  + 'SONG: [correcte officiële songtitel]\n\n'
+  + 'ARTIEST: [correcte officiele artiestnaam]\n'
+  + 'SONG: [correcte officiele songtitel]\n\n'
   + 'Structureer je antwoord daarna ALTIJD exact zo:\n\n'
   + '## TONE ANALYSE\n[analyse van de bastone]\n\n'
   + '## SIGNAALCHAIN\n'
@@ -45,7 +45,7 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + '### BLOKNAAM (origineel model)\n'
   + 'INSTELLINGEN:\n'
   + '- Parameternaam: waarde\n'
-  + 'UITLEG: één zin waarom\n\n'
+  + 'UITLEG: een zin waarom\n\n'
   + '## FINE-TUNE TIPS\n[3 concrete tips. Als stemming relevant is, vermeld dan ALLEEN de basstemming (bijv. Drop D, Eb standaard, C# standaard) en niet de gitaarstemming. Let hierbij op welke bas er gekozen is, de spector is standaard in BEADG en de Precision is standaard in EADG]\n\n'
   + 'Antwoord in het Nederlands.';
 
@@ -68,7 +68,7 @@ function analyzeTone() {
   document.getElementById('outputPanel').classList.remove('hidden');
   document.getElementById('chatPanel').classList.add('hidden');
   document.getElementById('outputMeta').textContent =
-    artist.toUpperCase() + ' — ' + song.toUpperCase() + ' · ' + bassLabel.toUpperCase();
+    artist.toUpperCase() + ' \u2014 ' + song.toUpperCase() + ' \u00b7 ' + bassLabel.toUpperCase();
   document.getElementById('outputContent').innerHTML =
     '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>Bastone analyseren...</p></div>';
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
@@ -92,18 +92,23 @@ function analyzeTone() {
     if (d.error) throw new Error(d.error);
     chatHistory.push({ role: 'assistant', content: d.content });
 
-    currentPresetData = {
-      artist: artist,
-      song: song,
-      bass: bassLabel,
-      content: d.content
-    };
+    var correctedArtist = artist;
+    var correctedSong = song;
+    var lines = d.content.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i].trim();
+      if (l.startsWith('ARTIEST:')) correctedArtist = l.replace('ARTIEST:', '').trim();
+      if (l.startsWith('SONG:')) correctedSong = l.replace('SONG:', '').trim();
+    }
 
+    currentPresetData = { artist: correctedArtist, song: correctedSong, bass: bassLabel, content: d.content };
+    document.getElementById('outputMeta').textContent =
+      correctedArtist.toUpperCase() + ' \u2014 ' + correctedSong.toUpperCase() + ' \u00b7 ' + bassLabel.toUpperCase();
     document.getElementById('outputContent').innerHTML = toHtml(d.content);
     document.getElementById('chatPanel').classList.remove('hidden');
     document.getElementById('chatMessages').innerHTML = '';
     addMsg('assistant', 'Preset klaar! Heb je vragen of wil je de sound verder verfijnen?');
-    document.getElementById('chatPanel').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
   })
   .catch(function(e) {
     document.getElementById('outputContent').innerHTML =
@@ -116,7 +121,7 @@ function analyzeTone() {
 }
 
 // =====================
-// CHAT — herbouwt panel 02
+// CHAT
 // =====================
 function sendChat() {
   var input = document.getElementById('chatInput');
@@ -133,7 +138,7 @@ function sendChat() {
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 
   var systemChat = SYSTEM_ANALYZE
-    + '\n\nDe gebruiker heeft een aanvullende wens. Genereer een VOLLEDIG NIEUW bijgewerkt preset-plan in exact hetzelfde formaat. Verwerk de aanpassing volledig. Geef alleen het preset-plan, geen extra uitleg erbuiten.';
+    + '\n\nDe gebruiker heeft een aanvullende wens. Genereer een VOLLEDIG NIEUW bijgewerkt preset-plan in exact hetzelfde formaat. Verwerk de aanpassing volledig. Geef alleen het preset-plan.';
 
   fetch('/api/chat', {
     method: 'POST',
@@ -144,16 +149,12 @@ function sendChat() {
   .then(function(d) {
     if (d.error) throw new Error(d.error);
     chatHistory.push({ role: 'assistant', content: d.content });
-
-    if (currentPresetData) {
-      currentPresetData.content = d.content;
-    }
-
+    if (currentPresetData) currentPresetData.content = d.content;
     document.getElementById('outputContent').innerHTML = toHtml(d.content);
     var lastMsg = document.getElementById('chatMessages').lastElementChild;
     if (lastMsg) {
       var bubble = lastMsg.querySelector('.msg-bubble');
-      if (bubble) bubble.innerHTML = '✓ Preset bijgewerkt op basis van je wens.';
+      if (bubble) bubble.innerHTML = '\u2713 Preset bijgewerkt op basis van je wens.';
     }
     document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
   })
@@ -161,10 +162,7 @@ function sendChat() {
     document.getElementById('outputContent').innerHTML =
       '<p style="color:var(--accent2)">Fout: ' + e.message + '</p>';
     var lastMsg = document.getElementById('chatMessages').lastElementChild;
-    if (lastMsg) {
-      var bubble = lastMsg.querySelector('.msg-bubble');
-      if (bubble) bubble.textContent = 'Fout: ' + e.message;
-    }
+    if (lastMsg) { var b = lastMsg.querySelector('.msg-bubble'); if (b) b.textContent = 'Fout: ' + e.message; }
   });
 }
 
@@ -173,9 +171,8 @@ function addMsg(role, text, id) {
   var d = document.createElement('div');
   d.className = 'msg ' + role;
   if (id) d.id = id;
-  d.innerHTML = '<span class="msg-role">'
-    + (role === 'user' ? 'JIJ' : 'ANAGRAM AI')
-    + '</span><div class="msg-bubble">' + toHtmlSimple(text) + '</div>';
+  d.innerHTML = '<span class="msg-role">' + (role === 'user' ? 'JIJ' : 'ANAGRAM AI') + '</span>'
+    + '<div class="msg-bubble">' + toHtmlSimple(text) + '</div>';
   c.appendChild(d);
   c.scrollTop = c.scrollHeight;
 }
@@ -183,46 +180,27 @@ function addMsg(role, text, id) {
 // =====================
 // OPSLAAN & LADEN
 // =====================
-// Cache voor presets (geladen vanuit Redis)
 var presetsCache = {};
 
-// =====================
-// OPSLAAN
-// =====================
 function savePreset() {
   if (!currentPresetData) { alert('Geen preset om op te slaan.'); return; }
-
   var id = Date.now().toString();
   var datum = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
   var bestaatAl = false;
   for (var key in presetsCache) {
     if (presetsCache[key].artist === currentPresetData.artist && presetsCache[key].song === currentPresetData.song) {
       bestaatAl = true; break;
     }
   }
-
   var label = '';
   if (bestaatAl) {
-    var input = window.prompt('Er bestaat al een preset voor dit nummer.\nGeef 2-3 steekwoorden voor deze versie\n(bijv: meer distortion, parallel, minder comp):', '');
+    var input = window.prompt('Er bestaat al een preset voor dit nummer.\nGeef 2-3 steekwoorden voor deze versie:', '');
     if (input === null) return;
     label = input.trim();
   }
-
-  var preset = {
-    id: id,
-    artist: currentPresetData.artist,
-    song: currentPresetData.song,
-    bass: currentPresetData.bass,
-    content: currentPresetData.content,
-    datum: datum,
-    label: label
-  };
-
+  var preset = { id: id, artist: currentPresetData.artist, song: currentPresetData.song, bass: currentPresetData.bass, content: currentPresetData.content, datum: datum, label: label };
   var btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  btn.textContent = 'OPSLAAN...';
-
+  btn.disabled = true; btn.textContent = 'OPSLAAN...';
   fetch('/api/presets', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -233,107 +211,60 @@ function savePreset() {
     if (d.error) throw new Error(d.error);
     presetsCache[id] = preset;
     renderSavedPanel();
-    btn.textContent = '✓ OPGESLAGEN';
-    btn.style.color = 'var(--accent)';
-    btn.style.borderColor = 'var(--accent)';
-    setTimeout(function() {
-      btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN';
-      btn.style.color = ''; btn.style.borderColor = '';
-      btn.disabled = false;
-    }, 2000);
+    btn.textContent = '\u2713 OPGESLAGEN';
+    btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent)';
+    setTimeout(function() { btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN'; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; }, 2000);
   })
-  .catch(function(e) {
-    alert('Opslaan mislukt: ' + e.message);
-    btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN';
-    btn.disabled = false;
-  });
+  .catch(function(e) { alert('Opslaan mislukt: ' + e.message); btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN'; btn.disabled = false; });
 }
 
-// =====================
-// LADEN (één preset)
-// =====================
 function loadPreset(id) {
-  var p = presetsCache[id];
-  if (!p) return;
-
+  var p = presetsCache[id]; if (!p) return;
   currentPresetData = { artist: p.artist, song: p.song, bass: p.bass, content: p.content };
-
-  document.getElementById('outputMeta').textContent =
-    p.artist.toUpperCase() + ' — ' + p.song.toUpperCase() + ' · ' + p.bass.toUpperCase();
+  document.getElementById('outputMeta').textContent = p.artist.toUpperCase() + ' \u2014 ' + p.song.toUpperCase() + ' \u00b7 ' + p.bass.toUpperCase();
   document.getElementById('outputContent').innerHTML = toHtml(p.content);
   document.getElementById('outputPanel').classList.remove('hidden');
   document.getElementById('chatPanel').classList.remove('hidden');
   document.getElementById('chatMessages').innerHTML = '';
-  chatHistory = [];
-  chatContext = p.artist + ' - ' + p.song + ' | ' + p.bass;
-
+  chatHistory = []; chatContext = p.artist + ' - ' + p.song + ' | ' + p.bass;
   addMsg('assistant', 'Preset geladen! Wil je nog aanpassingen maken?');
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 }
 
-// =====================
-// VERWIJDEREN
-// =====================
 function deletePreset(id) {
   if (!window.confirm('Preset verwijderen?')) return;
-
-  fetch('/api/presets', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: id })
-  })
+  fetch('/api/presets', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) })
   .then(function(r) { return r.json(); })
-  .then(function(d) {
-    if (d.error) throw new Error(d.error);
-    delete presetsCache[id];
-    renderSavedPanel();
-  })
+  .then(function(d) { if (d.error) throw new Error(d.error); delete presetsCache[id]; renderSavedPanel(); })
   .catch(function(e) { alert('Verwijderen mislukt: ' + e.message); });
 }
 
-// =====================
-// PANEL RENDEREN
-// =====================
 function renderSavedPanel() {
   var keys = Object.keys(presetsCache).sort(function(a, b) { return b - a; });
   var panel = document.getElementById('savedPanel');
   var list = document.getElementById('savedList');
-
-  if (keys.length === 0) {
-    panel.classList.add('hidden');
-    return;
-  }
-
+  if (keys.length === 0) { panel.classList.add('hidden'); return; }
   panel.classList.remove('hidden');
   list.innerHTML = keys.map(function(id) {
     var p = presetsCache[id];
-    var subtitle = p.bass.split('(')[0].trim() + ' · ' + p.datum;
-    if (p.label) subtitle += ' · ' + p.label;
-    return '<div class="saved-item">'
-      + '<div class="saved-item-header"><div>'
-      + '<div class="saved-item-title">' + p.artist + ' — ' + p.song + '</div>'
+    var subtitle = p.bass.split('(')[0].trim() + ' \u00b7 ' + p.datum;
+    if (p.label) subtitle += ' \u00b7 ' + p.label;
+    return '<div class="saved-item"><div class="saved-item-header"><div>'
+      + '<div class="saved-item-title">' + p.artist + ' \u2014 ' + p.song + '</div>'
       + '<div class="saved-item-date">' + subtitle + '</div>'
       + '</div><div class="saved-item-actions">'
       + '<button class="saved-action-btn btn-load" onclick="loadPreset(\'' + id + '\')">LADEN</button>'
-      + '<button class="saved-action-btn btn-delete" onclick="deletePreset(\'' + id + '\')">✕</button>'
+      + '<button class="saved-action-btn btn-delete" onclick="deletePreset(\'' + id + '\')">&#10005;</button>'
       + '</div></div></div>';
   }).join('');
 }
 
-// =====================
-// PRESETS OPHALEN BIJ OPSTARTEN
-// =====================
 function laadAllePresets() {
   fetch('/api/presets')
   .then(function(r) { return r.json(); })
-  .then(function(d) {
-    if (d.error) throw new Error(d.error);
-    presetsCache = d.presets || {};
-    renderSavedPanel();
-  })
+  .then(function(d) { presetsCache = d.presets || {}; renderSavedPanel(); })
   .catch(function(e) { console.error('Presets laden mislukt:', e.message); });
 }
-
 laadAllePresets();
 
 // =====================
@@ -344,49 +275,156 @@ function checkBSnaar(tekst) {
   var regels = t.split('\n');
   for (var i = 0; i < regels.length; i++) {
     var r = regels[i].trim();
-    if (r.startsWith('b_snaar_vereist:')) {
-      return r.indexOf('ja') !== -1;
-    }
+    if (r.startsWith('b_snaar_vereist:')) return r.indexOf('ja') !== -1;
   }
-  var keywords = ['lage b-snaar', 'lage b snaar', 'b-snaar nodig', 'b-snaar vereist',
-    'vijfde snaar', '5e snaar', 'low b string', 'low-b', 'onder de e-snaar'];
-  for (var j = 0; j < keywords.length; j++) {
-    if (t.indexOf(keywords[j]) !== -1) return true;
-  }
+  var keywords = ['lage b-snaar','lage b snaar','b-snaar nodig','b-snaar vereist','vijfde snaar','5e snaar','low b string','low-b','onder de e-snaar'];
+  for (var j = 0; j < keywords.length; j++) { if (t.indexOf(keywords[j]) !== -1) return true; }
   return false;
+}
+
+// =====================
+// VISUELE KNOB / TOGGLE / SELECTOR
+// =====================
+function makeKnob(label, value, unit, pct) {
+  // pct = 0.0 to 1.0 position on arc
+  pct = Math.max(0, Math.min(1, pct));
+  var cx = 30, cy = 30, r = 22;
+  var startDeg = 135, totalDeg = 270;
+  function pt(deg) {
+    var rad = (deg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+  var s = pt(startDeg);
+  var bg = pt(startDeg + totalDeg);
+  var filled = pct > 0;
+  var endDeg = startDeg + pct * totalDeg;
+  var e = pt(endDeg);
+  var largeArc = (pct * totalDeg) > 180 ? 1 : 0;
+
+  var bgPath = 'M ' + s.x.toFixed(2) + ' ' + s.y.toFixed(2) + ' A ' + r + ' ' + r + ' 0 1 1 ' + bg.x.toFixed(2) + ' ' + bg.y.toFixed(2);
+  var fillPath = filled ? ('M ' + s.x.toFixed(2) + ' ' + s.y.toFixed(2) + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + e.x.toFixed(2) + ' ' + e.y.toFixed(2)) : '';
+
+  var display = value + (unit ? (unit === '%' ? '%' : ' ' + unit) : '');
+
+  return '<div class="knob-wrap">'
+    + '<svg class="knob-svg" width="60" height="60" viewBox="0 0 60 60">'
+    + '<path class="knob-track" d="' + bgPath + '"/>'
+    + (filled ? '<path class="knob-fill" d="' + fillPath + '"/>' : '')
+    + '<text class="knob-center-val" x="30" y="31">' + display + '</text>'
+    + '</svg>'
+    + '<div class="knob-label">' + label + '</div>'
+    + '</div>';
+}
+
+function makeToggle(label, isOn) {
+  return '<div class="toggle-wrap">'
+    + '<div class="toggle-track ' + (isOn ? 'on' : 'off') + '">'
+    + '<div class="toggle-thumb"></div></div>'
+    + '<div class="toggle-val">' + (isOn ? 'ON' : 'OFF') + '</div>'
+    + '<div class="toggle-label">' + label + '</div>'
+    + '</div>';
+}
+
+function makeSelector(label, options, activeVal) {
+  var opts = options.map(function(o) {
+    var isActive = o.trim().toLowerCase() === activeVal.trim().toLowerCase();
+    return '<span class="selector-opt' + (isActive ? ' active' : '') + '">' + o.trim() + '</span>';
+  }).join('');
+  return '<div class="selector-wrap">'
+    + '<div class="selector-label">' + label + '</div>'
+    + '<div class="selector-opts">' + opts + '</div>'
+    + '</div>';
+}
+
+function makeTextBadge(label, value) {
+  return '<div class="textbadge-wrap">'
+    + '<div class="textbadge-label">' + label + '</div>'
+    + '<div class="textbadge-val">' + value + '</div>'
+    + '</div>';
+}
+
+function renderSettingVisual(param, value) {
+  var p = param.trim();
+  var v = value.trim();
+
+  // ON / OFF toggle
+  if (v.toLowerCase() === 'on') return makeToggle(p, true);
+  if (v.toLowerCase() === 'off') return makeToggle(p, false);
+
+  // Percentage (bijv. 75%)
+  var pctM = v.match(/^(\d+(?:\.\d+)?)\s*%$/);
+  if (pctM) {
+    var pv = parseFloat(pctM[1]);
+    return makeKnob(p, Math.round(pv), '%', pv / 100);
+  }
+
+  // 0-10 schaal zonder eenheid
+  var num0_10 = v.match(/^(\d+(?:\.\d+)?)$/);
+  if (num0_10) {
+    var nv = parseFloat(num0_10[1]);
+    return makeKnob(p, nv % 1 === 0 ? Math.round(nv) : nv, '', nv / 10);
+  }
+
+  // Getal met eenheid: ms, Hz, kHz, dB, s, cents
+  var unitM = v.match(/^(-?\d+(?:\.\d+)?)\s*(ms|Hz|kHz|dB|s|cents)$/i);
+  if (unitM) {
+    var uv = parseFloat(unitM[1]);
+    var unit = unitM[2];
+    var pctVal = 0.5; // default midpoint als we range niet weten
+    // Bekende ranges
+    if (unit === 'ms') pctVal = Math.min(1, uv / 2000);
+    else if (unit === 'Hz') pctVal = Math.min(1, uv / 10000);
+    else if (unit === 'kHz') pctVal = Math.min(1, uv / 20);
+    else if (unit === 'dB') pctVal = Math.min(1, Math.max(0, (uv + 30) / 60));
+    else if (unit === 's') pctVal = Math.min(1, uv / 20);
+    else if (unit === 'cents') pctVal = Math.min(1, Math.max(0, (uv + 50) / 100));
+    return makeKnob(p, uv, unit, pctVal);
+  }
+
+  // Slash-gescheiden opties (bijv. Alpha/Omega, 4:1/8:1/12:1)
+  if (v.indexOf('/') !== -1) {
+    var parts = v.split('/').map(function(x) { return x.trim(); });
+    // Als het maar 2 opties zijn die op on/off lijken
+    if (parts.length === 2 && parts[0].length < 12 && parts[1].length < 12) {
+      return makeSelector(p, parts, parts[0]);
+    }
+    return makeTextBadge(p, v);
+  }
+
+  // Ratio zoals 4:1
+  if (v.match(/^\d+:\d+$/) || v === 'All' || v === 'Auto') {
+    return makeSelector(p, [v], v);
+  }
+
+  // Alles anders: text badge
+  return makeTextBadge(p, v);
 }
 
 // =====================
 // SIGNAALCHAIN RENDERER
 // =====================
 function renderChainRegel(chainStr) {
-  var normalized = chainStr.replace(/→/g, '>').replace(/->/g, '>');
+  var normalized = chainStr.replace(/\u2192/g, '>').replace(/->/g, '>');
   var blokken = normalized.split('>').map(function(b) { return b.trim(); }).filter(Boolean);
   var html = '';
   blokken.forEach(function(b, idx) {
     html += '<span class="chain-block">' + b + '</span>';
-    if (idx < blokken.length - 1) html += '<span class="chain-arrow">→</span>';
+    if (idx < blokken.length - 1) html += '<span class="chain-arrow">\u2192</span>';
   });
   return html;
 }
 
 // =====================
-// HTML RENDERER (output)
+// HTML RENDERER
 // =====================
 function toHtml(t) {
   var regels = t.split('\n');
   var html = '';
-  var inBlok = false;
-  var blokNaam = '';
-  var blokSettings = [];
-  var blokUitleg = '';
-  var blokTeller = 0;
-  var inChain = false;
-  var chainHtml = '';
-  var inTips = false;
+  var inBlok = false, blokNaam = '', blokSettings = [], blokUitleg = '';
+  var blokTeller = 0, inChain = false, chainHtml = '', inTips = false;
 
   if (selectedBass === 'pbass' && checkBSnaar(t)) {
-    html += '<div class="bsnaar-warning"><span class="bsnaar-icon">⚠</span>'
+    html += '<div class="bsnaar-warning"><span class="bsnaar-icon">\u26a0</span>'
       + '<div><strong>Let op: 4-snarige bas</strong><br>'
       + 'Dit nummer maakt waarschijnlijk gebruik van een lage B-snaar. '
       + 'Met je Fender Precision Bass kun je mogelijk niet alle noten spelen zoals in het origineel. '
@@ -395,17 +433,27 @@ function toHtml(t) {
 
   function sluitBlok() {
     if (!inBlok) return;
-    var settingsHtml = blokSettings.map(function(s) {
+
+    // Bouw visuele controls
+    var visualsHtml = '<div class="visual-controls">';
+    blokSettings.forEach(function(s) {
       var idx = s.indexOf(':');
-      if (idx === -1) return '';
+      if (idx === -1) return;
       var param = s.substring(0, idx).replace(/^-\s*/, '').trim();
       var waarde = s.substring(idx + 1).trim();
-      return '<div class="setting-item"><div class="setting-param">' + param + '</div><div class="setting-waarde">' + waarde + '</div></div>';
-    }).join('');
-    html += '<div class="blok-kaart"><div class="blok-titel"><span class="blok-nummer">' + blokTeller + '</span><span class="blok-naam">' + blokNaam + '</span></div><div class="blok-body">';
-    if (settingsHtml) html += '<div class="blok-settings">' + settingsHtml + '</div>';
-    if (blokUitleg) html += '<div class="blok-uitleg">' + blokUitleg + '</div>';
-    html += '</div></div>';
+      visualsHtml += renderSettingVisual(param, waarde);
+    });
+    visualsHtml += '</div>';
+
+    html += '<div class="blok-kaart">'
+      + '<div class="blok-titel">'
+      + '<span class="blok-nummer">' + blokTeller + '</span>'
+      + '<span class="blok-naam">' + blokNaam + '</span>'
+      + '</div><div class="blok-body">'
+      + (blokSettings.length ? visualsHtml : '')
+      + (blokUitleg ? '<div class="blok-uitleg">' + blokUitleg + '</div>' : '')
+      + '</div></div>';
+
     inBlok = false; blokNaam = ''; blokSettings = []; blokUitleg = '';
   }
 
@@ -425,6 +473,7 @@ function toHtml(t) {
     var r = regels[i].trim();
     if (!r) continue;
     if (r.toLowerCase().startsWith('b_snaar_vereist:')) continue;
+    if (r.startsWith('ARTIEST:') || r.startsWith('SONG:')) continue;
 
     if (r.startsWith('## ')) {
       sluitBlok(); sluitChain(); sluitTips();
@@ -443,9 +492,9 @@ function toHtml(t) {
 
     if (inChain) {
       if (r === 'SERIEEL') {
-        chainHtml += '<div class="chain-row"><span class="parallel-badge" style="border-color:var(--accent);color:var(--accent)">→ SERIEEL</span></div>';
+        chainHtml += '<div class="chain-row"><span class="parallel-badge" style="border-color:var(--accent);color:var(--accent)">\u2192 SERIEEL</span></div>';
       } else if (r === 'PARALLEL') {
-        chainHtml += '<div class="chain-row"><span class="parallel-badge">⇄ PARALLEL ROUTING</span></div>';
+        chainHtml += '<div class="chain-row"><span class="parallel-badge">\u21c4 PARALLEL ROUTING</span></div>';
       } else if (r.startsWith('CHAIN_A:')) {
         chainHtml += '<div class="chain-row"><span class="chain-label">A</span>' + renderChainRegel(r.replace('CHAIN_A:', '').trim()) + '</div>';
       } else if (r.startsWith('CHAIN_B:')) {
@@ -453,8 +502,8 @@ function toHtml(t) {
       } else if (r.startsWith('CHAIN:')) {
         chainHtml += '<div class="chain-row">' + renderChainRegel(r.replace('CHAIN:', '').trim()) + '</div>';
       } else if (r.startsWith('MERGE_NAAR:')) {
-        chainHtml += '<div class="chain-row"><span class="chain-merge">⇣ MERGE</span>' + renderChainRegel(r.replace('MERGE_NAAR:', '').trim()) + '</div>';
-      } else if (r.indexOf('→') !== -1 || r.indexOf('>') !== -1) {
+        chainHtml += '<div class="chain-row"><span class="chain-merge">\u21e3 MERGE</span>' + renderChainRegel(r.replace('MERGE_NAAR:', '').trim()) + '</div>';
+      } else if (r.indexOf('\u2192') !== -1 || r.indexOf('>') !== -1) {
         chainHtml += '<div class="chain-row">' + renderChainRegel(r) + '</div>';
       } else {
         chainHtml += '<p style="font-size:0.75rem;color:var(--text-dim);margin:0.25rem 0">' + r + '</p>';
@@ -488,9 +537,6 @@ function toHtml(t) {
   return html;
 }
 
-// =====================
-// SIMPELE HTML (chat)
-// =====================
 function toHtmlSimple(t) {
   return t
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
