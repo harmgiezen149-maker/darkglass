@@ -36,13 +36,25 @@ module.exports = async function handler(req, res) {
 
   // GET — haal blokdefinities op
   if (req.method === 'GET') {
-    // Reset naar standaard als ?reset=1
+    // Reset naar opgeslagen standaard (of hardcoded als die er niet is)
     var reset = (req.query && req.query.reset) || (req.url && req.url.includes('reset=1'));
     if (reset) {
-      try { await redisDel('anagram:blocks'); } catch(e) {}
+      try {
+        // Probeer eerst de opgeslagen standaard
+        var savedDefault = await redisGet('anagram:blocks:default');
+        if (savedDefault.result) {
+          var defBlocks = JSON.parse(savedDefault.result);
+          if (typeof defBlocks === 'string') defBlocks = JSON.parse(defBlocks);
+          if (Array.isArray(defBlocks) && defBlocks.length > 0) {
+            await redisSet('anagram:blocks', JSON.stringify(defBlocks));
+            return res.status(200).json({ blocks: defBlocks, source: 'custom-default' });
+          }
+        }
+      } catch(e) {}
+      // Fallback naar hardcoded standaard
       var defaults = getDefaultBlocks();
       try { await redisSet('anagram:blocks', JSON.stringify(defaults)); } catch(e) {}
-      return res.status(200).json({ blocks: defaults });
+      return res.status(200).json({ blocks: defaults, source: 'hardcoded' });
     }
 
     try {
@@ -67,9 +79,13 @@ module.exports = async function handler(req, res) {
     var body = req.body || {};
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
     if (!body.blocks) return res.status(400).json({ error: 'Geen blokken opgegeven' });
+    var setDefault = body.setDefault === true;
     try {
       await redisSet('anagram:blocks', JSON.stringify(body.blocks));
-      return res.status(200).json({ ok: true });
+      if (setDefault) {
+        await redisSet('anagram:blocks:default', JSON.stringify(body.blocks));
+      }
+      return res.status(200).json({ ok: true, savedAsDefault: setDefault });
     } catch(e) {
       return res.status(500).json({ error: e.message });
     }
