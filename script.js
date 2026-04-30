@@ -334,7 +334,13 @@ function renderSettingVisual(param, value) {
     if (unit === 'ms') pctVal = Math.min(1, uv / 2000);
     else if (unit.toLowerCase() === 'hz') pctVal = Math.min(1, uv / 10000);
     else if (unit === 'kHz') pctVal = Math.min(1, uv / 20);
-    else if (unit === 'dB') pctVal = Math.min(1, Math.max(0, (uv + 30) / 60));
+    else if (unit === 'dB') {
+      if (uv <= 0) {
+        pctVal = Math.min(1, Math.max(0, (uv + 80) / 80)); // -80dB=6uur, 0dB=5uur
+      } else {
+        pctVal = Math.min(1, Math.max(0, uv / 30)); // 0dB=6uur, +30dB=5uur
+      }
+    }
     else if (unit === 's') pctVal = Math.min(1, uv / 20);
     else if (unit === 'cents') pctVal = Math.min(1, Math.max(0, (uv + 100) / 200));
     return makeKnob(p, uv, unit, pctVal);
