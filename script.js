@@ -335,10 +335,12 @@ function renderSettingVisual(param, value) {
     else if (unit.toLowerCase() === 'hz') pctVal = Math.min(1, uv / 10000);
     else if (unit === 'kHz') pctVal = Math.min(1, uv / 20);
     else if (unit === 'dB') {
-      if (uv <= 0) {
-        pctVal = Math.min(1, Math.max(0, (uv + 80) / 80)); // -80dB=6uur, 0dB=5uur
+      if (uv < -20) {
+        // Threshold type: -80 tot 0 dB → 0dB rechts, -80dB links
+        pctVal = Math.min(1, Math.max(0, (uv + 80) / 80));
       } else {
-        pctVal = Math.min(1, Math.max(0, uv / 30)); // 0dB=6uur, +30dB=5uur
+        // EQ/Gain type: -15 tot +15 dB → 0dB in het midden (6 uur)
+        pctVal = Math.min(1, Math.max(0, (uv + 15) / 30));
       }
     }
     else if (unit === 's') pctVal = Math.min(1, uv / 20);
