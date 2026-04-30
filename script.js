@@ -295,39 +295,44 @@ function makeKnob(label, value, unit, pct) {
 // =====================
 // KNOB — bipolair (±range)
 // 0 dB = 12 uur (midden), positief vult rechts, negatief vult links
+// Track: 7 uur (210°) → 12 uur (0°) → 5 uur (150°), sweep 300°
 // =====================
 function makeKnobBipolar(label, value, unit, pct) {
-  // pct: -1.0 tot +1.0
   pct = Math.max(-1, Math.min(1, pct));
   var cx = 30, cy = 30, r = 22;
-  var startDeg = 180;
-  var totalDeg = 330;
-  var centerDeg = startDeg + totalDeg / 2; // 12 uur = 345 graden
 
   function pt(deg) {
     var rad = (deg - 90) * Math.PI / 180;
-    return { x: parseFloat((cx + r * Math.cos(rad)).toFixed(2)), y: parseFloat((cy + r * Math.sin(rad)).toFixed(2)) };
+    return {
+      x: parseFloat((cx + r * Math.cos(rad)).toFixed(2)),
+      y: parseFloat((cy + r * Math.sin(rad)).toFixed(2))
+    };
   }
 
-  var s = pt(startDeg);
-  var bgEnd = pt(startDeg + totalDeg);
-  var center = pt(centerDeg);
+  // Track: van 210° (7 uur) clockwise 300° naar 150° (5 uur)
+  var trackStart = pt(210);
+  var trackEnd   = pt(150);
+  var bgPath = 'M ' + trackStart.x + ' ' + trackStart.y
+    + ' A ' + r + ' ' + r + ' 0 1 1 ' + trackEnd.x + ' ' + trackEnd.y;
 
-  var bgPath = 'M ' + s.x + ' ' + s.y + ' A ' + r + ' ' + r + ' 0 1 1 ' + bgEnd.x + ' ' + bgEnd.y;
+  // Middelpunt = 0° = 12 uur
+  var center = pt(0);
 
   var fillPath = '';
   if (Math.abs(pct) > 0.01) {
-    var arcDeg = Math.abs(pct) * (totalDeg / 2);
+    var arcDeg = Math.abs(pct) * 150; // max helft = 150°
     var largeArc = arcDeg > 180 ? 1 : 0;
     var endPt;
     if (pct > 0) {
-      // Positief: clockwise vanuit midden (naar rechts)
-      endPt = pt(centerDeg + arcDeg);
-      fillPath = 'M ' + center.x + ' ' + center.y + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + endPt.x + ' ' + endPt.y;
+      // Positief: clockwise van 12 uur naar rechts (0° → 150°)
+      endPt = pt(arcDeg);
+      fillPath = 'M ' + center.x + ' ' + center.y
+        + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + endPt.x + ' ' + endPt.y;
     } else {
-      // Negatief: counter-clockwise vanuit midden (naar links)
-      endPt = pt(centerDeg - arcDeg);
-      fillPath = 'M ' + center.x + ' ' + center.y + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 0 ' + endPt.x + ' ' + endPt.y;
+      // Negatief: counter-clockwise van 12 uur naar links (0° → -150° = 210°)
+      endPt = pt(360 - arcDeg);
+      fillPath = 'M ' + center.x + ' ' + center.y
+        + ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 0 ' + endPt.x + ' ' + endPt.y;
     }
   }
 
