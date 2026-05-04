@@ -425,35 +425,34 @@ laadAllePresets();
 function checkApiStatus() {
   var el = document.getElementById('apiStatus');
   if (!el) return;
+  el.className = 'api-status ok';
   el.innerHTML = '<span class="api-status-dot"></span> CHECKING...';
-  el.className = 'api-status';
 
   fetch('/api/status')
-  .then(function(r) { return r.json(); })
+  .then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
   .then(function(d) {
-    if (d.ok) {
-      el.className = 'api-status ok';
-      el.innerHTML = '<span class="api-status-dot"></span> API OK';
-      el.title = 'Anthropic API werkt normaal';
-    } else if (d.degraded || d.hasIncident) {
+    if (d.hasIncident || d.degraded) {
       el.className = 'api-status ' + (d.degraded ? 'err' : 'warn');
-      var incidentNames = (d.incidents || []).map(function(i) { return i.name; }).join(', ');
       var label = d.degraded ? 'API STORING' : 'API MELDING';
+      var names = (d.incidents || []).map(function(i) { return i.name; }).join(', ');
       el.innerHTML = '<span class="api-status-dot"></span> ' + label;
-      el.title = incidentNames || 'Er is een melding op de Anthropic statuspagina';
+      el.title = names || 'Melding op Anthropic statuspagina';
     } else {
       el.className = 'api-status ok';
       el.innerHTML = '<span class="api-status-dot"></span> API OK';
+      el.title = 'Anthropic API werkt normaal';
     }
   })
-  .catch(function() {
+  .catch(function(e) {
     el.className = 'api-status ok';
     el.innerHTML = '<span class="api-status-dot"></span> API OK';
-    el.title = 'Status onbekend';
+    el.title = 'Status: ' + e.message;
   });
 }
 
-// Check bij laden en daarna elke 3 minuten
 checkApiStatus();
 setInterval(checkApiStatus, 180000);
 
