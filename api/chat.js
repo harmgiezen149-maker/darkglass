@@ -24,15 +24,9 @@ module.exports = async function handler(req, res) {
       });
       const d = await r.json();
       if (d.result) {
-        // Verwerk zowel enkel als dubbel gecodeerde JSON
         let blocks = d.result;
-        if (typeof blocks === 'string') {
-          blocks = JSON.parse(blocks);
-        }
-        if (typeof blocks === 'string') {
-          blocks = JSON.parse(blocks); // dubbel gecodeerd
-        }
-
+        if (typeof blocks === 'string') blocks = JSON.parse(blocks);
+        if (typeof blocks === 'string') blocks = JSON.parse(blocks);
         if (Array.isArray(blocks) && blocks.length > 0) {
           blockPrompt = '\n\n=== BESCHIKBARE ANAGRAM BLOKKEN ===\n';
           blocks.forEach(function(sectie) {
@@ -62,18 +56,59 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-5',
-        max_tokens: 2048,
+        max_tokens: 4096,
+        stream: true,
         system: finalSystem,
         messages: messages,
       }),
     });
 
-    const data = await response.json();
-    if (!response.ok) return res.status(response.status).json({ error: data.error?.message || 'Anthropic API error' });
-    return res.status(200).json({ content: data.content?.[0]?.text || '' });
+    if (!response.ok) {
+      const err = await response.json();
+      return res.status(response.status).json({ error: err.error?.message || 'API error' });
+    }
+
+    // Stream door naar de client als Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // bewaar onvolledige regel
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+              res.write('data: ' + JSON.stringify({ text: parsed.delta.text }) + '\n\n');
+            }
+            if (parsed.type === 'message_stop') {
+              res.write('data: [DONE]\n\n');
+            }
+          } catch(e) {}
+        }
+      }
+    }
+
+    res.end();
 
   } catch (err) {
     console.error('API error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.end();
   }
 };
