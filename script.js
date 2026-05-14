@@ -45,7 +45,7 @@ var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Dark
   + 'INSTELLINGEN:\n'
   + '- Parameternaam: waarde\n'
   + 'UITLEG: een zin waarom\n\n'
-  + '## FINE-TUNE TIPS\n[3 concrete tips. Als stemming relevant is, vermeld dan ALLEEN de basstemming (bijv. Drop D, Eb standaard, C# standaard) en niet de gitaarstemming. Let hierbij op welke bas er gekozen is, de spector is standaard in BEADG en de Precision is standaard in EADG]\n\n'
+  + '## FINE-TUNE TIPS\n[3 concrete tips. Als stemming relevant is, vermeld dan ALLEEN de basstemming (bijv. Drop D, Eb standaard, C# standaard) en niet de gitaarstemming. Let hierbij op welke bas er gekozen is, de spector is standaard in BEADG en de Precision is standaard in EADG. Houd ook rekening met de specifieke pickup-configuratie van de bas (Spector heeft een P-pickup op de neck en J-pickup op de bridge, dus blend ratio kan invloed hebben op de sound)]\n\n'
   + 'Antwoord in het Nederlands.';
 
 var SYSTEM_DUAL = SYSTEM_ANALYZE
@@ -83,11 +83,11 @@ function analyzeTone() {
   activeScene = 'spector';
   sceneData = { spector: null, pbass: null };
 
+  var spectorLabel = 'Spector NS Ethos 5 (actief, 5-snarig, neck pickup EMG 40P5 + bridge pickup EMG 40J, EMG BQC mid control 100Hz-1kHz, Aguilar OBP-2 preamp, EMG 25K tone pot, 18V voeding)';
+  var pbassLabel = 'Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz pickup)';
   var bassLabel = isDualMode
-    ? 'Spector NS Ethos 5 (actief, 5-snarig, EMG-Hz P/HH) EN Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz)'
-    : (selectedBass === 'spector'
-        ? 'Spector NS Ethos 5 (actief, 5-snarig, EMG-Hz pickup in P/HH configuratie)'
-        : 'Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz pickup)');
+    ? spectorLabel + ' EN ' + pbassLabel
+    : (selectedBass === 'spector' ? spectorLabel : pbassLabel);
 
   var btn = document.getElementById('analyzeBtn');
   btn.disabled = true;
@@ -230,13 +230,11 @@ function sendChat() {
     '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>Preset bijwerken...</p></div>';
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 
+  var spectorChat = 'Spector NS Ethos 5 (actief, 5-snarig, neck EMG 40P5 + bridge EMG 40J, EMG BQC mid 100Hz-1kHz, Aguilar OBP-2, EMG 25K tone pot, 18V)';
+  var pbassChat = 'Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz)';
   var bassForChat = isDualMode
-    ? (activeScene === 'spector'
-        ? 'Spector NS Ethos 5 (actief, 5-snarig, EMG-Hz P/HH)'
-        : 'Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz)')
-    : (selectedBass === 'spector'
-        ? 'Spector NS Ethos 5 (actief, 5-snarig, EMG-Hz P/HH)'
-        : 'Fender Precision Bass (actief, 4-snarig, Split-P EMG-Hz)');
+    ? (activeScene === 'spector' ? spectorChat : pbassChat)
+    : (selectedBass === 'spector' ? spectorChat : pbassChat);
 
   var systemChat = SYSTEM_ANALYZE
     + '\n\nDe gebruiker verfijnt de preset voor: ' + bassForChat + '. '
