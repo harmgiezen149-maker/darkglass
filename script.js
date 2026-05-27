@@ -1,14 +1,141 @@
 // =====================
+// TAAL / I18N
+// =====================
+var currentLang = localStorage.getItem('dg_lang') || 'nl';
+
+var I18N = {
+  nl: {
+    logoSub: 'TONE ARCHITECT',
+    panel01: '01 / SETUP',
+    panel02: '02 / ANAGRAM PRESET',
+    panel03: '03 / FINE-TUNE CHAT',
+    panel04: '04 / OPGESLAGEN PRESETS',
+    bassSelectie: 'BASS SELECTIE',
+    spectorDetail: 'Actief · 5-snarig · EMG-Hz P/HH',
+    pbassDetail: 'Actief · 4-snarig · Split-P EMG-Hz',
+    beideBassen: 'BEIDE BASSEN',
+    beideDetail: '2 scenes · Spector + P-Bass',
+    artiest: 'ARTIEST',
+    songtitel: 'SONGTITEL',
+    extraWensen: 'EXTRA WENSEN',
+    optioneel: '(optioneel)',
+    artiestPh: 'bijv. Tool, Karnivool, VOLA...',
+    songPh: 'bijv. Schism, We Are, Straight Lines...',
+    extraPh: 'bijv: meer distortion dan het origineel, parallelle processing nodig...',
+    analyseerTone: 'ANALYSEER TONE',
+    analyseren: 'ANALYSEREN...',
+    scene1: 'SCENE 1 — SPECTOR NS ETHOS 5',
+    scene2: 'SCENE 2 — FENDER P-BASS',
+    chatPh: 'Stel een vraag of geef een aanpassing...',
+    presetOpslaan: 'PRESET OPSLAAN',
+    opslaanBezig: 'OPSLAAN...',
+    opgeslagen: '✓ OPGESLAGEN',
+    footer: "DARKGLASS ANAGRAM TONE ARCHITECT — HARM'S SIGNAL CHAIN",
+    // dynamische teksten
+    bastoneAnalyseren: 'Bastone analyseren...',
+    presetBijwerken: 'Preset bijwerken...',
+    presetKlaar: 'Preset klaar! Heb je vragen of wil je de sound verder verfijnen?',
+    dualPresetKlaar: 'Beide presets klaar! Gebruik de tabs om te wisselen.',
+    presetGeladen: 'Preset geladen! Wil je nog aanpassingen maken?',
+    presetBijgewerkt: '✓ Preset bijgewerkt.',
+    chatPastScene: 'Chat past de actieve scene aan: ',
+    fout: 'Fout: ',
+    vulInVraag: 'Vul artiest en songtitel in.',
+    geenPreset: 'Geen preset om op te slaan.',
+    bestaatAlPrompt: 'Er bestaat al een preset voor dit nummer.\nGeef 2-3 steekwoorden voor deze versie:',
+    verwijderenVraag: 'Preset verwijderen?',
+    bsnaarTitel: 'Let op: 4-snarige bas',
+    bsnaarTekst: 'Dit nummer maakt waarschijnlijk gebruik van een lage B-snaar. Met je Fender Precision Bass kun je mogelijk niet alle noten spelen zoals in het origineel.',
+    jij: 'JIJ',
+    aiNaam: 'ANAGRAM AI',
+    aiTaalInstructie: 'Antwoord in het Nederlands.'
+  },
+  en: {
+    logoSub: 'TONE ARCHITECT',
+    panel01: '01 / SETUP',
+    panel02: '02 / ANAGRAM PRESET',
+    panel03: '03 / FINE-TUNE CHAT',
+    panel04: '04 / SAVED PRESETS',
+    bassSelectie: 'BASS SELECTION',
+    spectorDetail: 'Active · 5-string · EMG-Hz P/HH',
+    pbassDetail: 'Active · 4-string · Split-P EMG-Hz',
+    beideBassen: 'BOTH BASSES',
+    beideDetail: '2 scenes · Spector + P-Bass',
+    artiest: 'ARTIST',
+    songtitel: 'SONG TITLE',
+    extraWensen: 'EXTRA WISHES',
+    optioneel: '(optional)',
+    artiestPh: 'e.g. Tool, Karnivool, VOLA...',
+    songPh: 'e.g. Schism, We Are, Straight Lines...',
+    extraPh: 'e.g. more distortion than the original, parallel processing needed...',
+    analyseerTone: 'ANALYZE TONE',
+    analyseren: 'ANALYZING...',
+    scene1: 'SCENE 1 — SPECTOR NS ETHOS 5',
+    scene2: 'SCENE 2 — FENDER P-BASS',
+    chatPh: 'Ask a question or request an adjustment...',
+    presetOpslaan: 'SAVE PRESET',
+    opslaanBezig: 'SAVING...',
+    opgeslagen: '✓ SAVED',
+    footer: "DARKGLASS ANAGRAM TONE ARCHITECT — HARM'S SIGNAL CHAIN",
+    bastoneAnalyseren: 'Analyzing bass tone...',
+    presetBijwerken: 'Updating preset...',
+    presetKlaar: 'Preset ready! Any questions or want to refine the sound?',
+    dualPresetKlaar: 'Both presets ready! Use the tabs to switch.',
+    presetGeladen: 'Preset loaded! Want to make any adjustments?',
+    presetBijgewerkt: '✓ Preset updated.',
+    chatPastScene: 'Chat updates the active scene: ',
+    fout: 'Error: ',
+    vulInVraag: 'Please enter artist and song title.',
+    geenPreset: 'No preset to save.',
+    bestaatAlPrompt: 'A preset already exists for this song.\nProvide 2-3 keywords for this version:',
+    verwijderenVraag: 'Delete preset?',
+    bsnaarTitel: 'Warning: 4-string bass',
+    bsnaarTekst: 'This song likely uses a low B-string. With your Fender Precision Bass you may not be able to play all notes as in the original.',
+    jij: 'YOU',
+    aiNaam: 'ANAGRAM AI',
+    aiTaalInstructie: 'Answer in English.'
+  }
+};
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || I18N.nl[key] || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    var val = t(key);
+    if (val) el.textContent = val;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-placeholder');
+    var val = t(key);
+    if (val) el.placeholder = val;
+  });
+  document.documentElement.setAttribute('lang', currentLang);
+  var sel = document.getElementById('langSelect');
+  if (sel) sel.value = currentLang;
+}
+
+function setLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('dg_lang', lang);
+  applyTranslations();
+  // Hervertaling van knop met live tekst
+  var btn = document.getElementById('analyzeBtn');
+  if (btn && !btn.disabled) document.getElementById('btnText').textContent = t('analyseerTone');
+}
+
+// =====================
 // STATE
 // =====================
 var selectedBass = 'spector';
 var chatHistory = [];
 var chatContext = '';
 var currentPresetData = null;
-// Dual scene state
 var isDualMode = false;
-var activeScene = 'spector'; // 'spector' of 'pbass'
-var sceneData = { spector: null, pbass: null }; // { content, html }
+var activeScene = 'spector';
+var sceneData = { spector: null, pbass: null };
 
 // =====================
 // BASS SELECTIE
@@ -26,50 +153,56 @@ document.getElementById('songInput').addEventListener('keydown', function(e) { i
 // =====================
 // SYSTEEM PROMPT
 // =====================
-var SYSTEM_ANALYZE = 'Je bent een expert in bas-gitaar sound design voor de Darkglass Anagram (KosmOS v1.13). '
-  + 'Gebruik ALLEEN de bloknamen en parameters die verderop in deze prompt vermeld staan onder BESCHIKBARE ANAGRAM BLOKKEN. '
-  + 'Geef GEEN parameters op die niet in die lijst staan.\n\n'
-  + 'Zet ALTIJD de eerste drie regels zo:\n'
-  + 'B_SNAAR_VEREIST: ja of nee\n'
-  + 'ARTIEST: [correcte officiele artiestnaam]\n'
-  + 'SONG: [correcte officiele songtitel]\n\n'
-  + 'Structureer je antwoord daarna ALTIJD exact zo:\n\n'
-  + '## TONE ANALYSE\n[analyse van de bastone]\n\n'
-  + '## SIGNAALCHAIN\n'
-  + 'SERIEEL of PARALLEL\n'
-  + 'CHAIN_A: Blok1 > Blok2 > Blok3\n'
-  + 'CHAIN_B: Blok4 > Blok5 (alleen bij parallel)\n'
-  + 'MERGE_NAAR: Blok6 (alleen bij parallel)\n\n'
-  + '## BLOKKEN\n\n'
-  + '### BLOKNAAM (origineel model)\n'
-  + 'INSTELLINGEN:\n'
-  + '- Parameternaam: waarde\n'
-  + 'UITLEG: een zin waarom\n\n'
-  + '## FINE-TUNE TIPS\n[3 concrete tips. Als stemming relevant is, vermeld dan ALLEEN de basstemming (bijv. Drop D, Eb standaard, C# standaard) en niet de gitaarstemming. Let hierbij op welke bas er gekozen is, de spector is standaard in BEADG en de Precision is standaard in EADG. Houd ook rekening met de specifieke pickup-configuratie van de bas (Spector heeft een P-pickup op de neck en J-pickup op de bridge, dus blend ratio kan invloed hebben op de sound)]\n\n'
-  + 'Antwoord in het Nederlands.';
+function buildSystemPrompt() {
+  return 'Je bent een expert in bas-gitaar sound design voor de Darkglass Anagram (KosmOS v1.13). '
+    + 'Gebruik ALLEEN de bloknamen en parameters die verderop in deze prompt vermeld staan onder BESCHIKBARE ANAGRAM BLOKKEN. '
+    + 'Geef GEEN parameters op die niet in die lijst staan.\n\n'
+    + 'Zet ALTIJD de eerste drie regels zo:\n'
+    + 'B_SNAAR_VEREIST: ja of nee\n'
+    + 'ARTIEST: [correcte officiele artiestnaam]\n'
+    + 'SONG: [correcte officiele songtitel]\n\n'
+    + 'Structureer je antwoord daarna ALTIJD exact zo:\n\n'
+    + '## TONE ANALYSE\n[analyse van de bastone]\n\n'
+    + '## SIGNAALCHAIN\n'
+    + 'SERIEEL of PARALLEL\n'
+    + 'CHAIN_A: Blok1 > Blok2 > Blok3\n'
+    + 'CHAIN_B: Blok4 > Blok5 (alleen bij parallel)\n'
+    + 'MERGE_NAAR: Blok6 (alleen bij parallel)\n\n'
+    + '## BLOKKEN\n\n'
+    + '### BLOKNAAM (origineel model)\n'
+    + 'INSTELLINGEN:\n'
+    + '- Parameternaam: waarde\n'
+    + 'UITLEG: een zin waarom\n\n'
+    + '## FINE-TUNE TIPS\n[3 concrete tips. Als stemming relevant is, vermeld dan ALLEEN de basstemming (bijv. Drop D, Eb standaard, C# standaard) en niet de gitaarstemming. Let hierbij op welke bas er gekozen is, de spector is standaard in BEADG en de Precision is standaard in EADG. Houd ook rekening met de specifieke pickup-configuratie van de bas (Spector heeft een P-pickup op de neck en J-pickup op de bridge, dus blend ratio kan invloed hebben op de sound)]\n\n'
+    + 'Voeg ALTIJD als laatste blok in de signaalchain een Volume Pedal toe (Utility blok), zodat de speler altijd volumecontrole heeft. Geef dit blok de instelling: Level (0-100%) met een aanbevolen startwaarde.\n\n'
+    + 'BELANGRIJK: De sectienamen (TONE ANALYSE, SIGNAALCHAIN, BLOKKEN, FINE-TUNE TIPS) moeten EXACT zo blijven staan in de output, ook al gebruik je een andere taal voor de inhoud. De labels INSTELLINGEN, UITLEG, ARTIEST, SONG, CHAIN_A, CHAIN_B, MERGE_NAAR, SERIEEL en PARALLEL ook letterlijk zo houden.\n\n'
+    + t('aiTaalInstructie');
+}
 
-var SYSTEM_DUAL = SYSTEM_ANALYZE
-  + '\n\nDe gebruiker wil presets voor TWEE bassen tegelijk. Genereer twee volledige, aparte presets.'
-  + 'Gebruik exact dit formaat:\n\n'
-  + '==SCENE_SPECTOR==\n'
-  + 'B_SNAAR_VEREIST: ja of nee\n'
-  + 'ARTIEST: [naam]\n'
-  + 'SONG: [naam]\n'
-  + '## TONE ANALYSE\n...\n'
-  + '## SIGNAALCHAIN\n...\n'
-  + '## BLOKKEN\n...\n'
-  + '## FINE-TUNE TIPS\n...\n'
-  + '==SCENE_PBASS==\n'
-  + 'B_SNAAR_VEREIST: nee\n'
-  + 'ARTIEST: [naam]\n'
-  + 'SONG: [naam]\n'
-  + '## TONE ANALYSE\n...\n'
-  + '## SIGNAALCHAIN\n...\n'
-  + '## BLOKKEN\n...\n'
-  + '## FINE-TUNE TIPS\n...\n\n'
-  + 'Beide presets gebruiken dezelfde blokken structuur maar met aangepaste instellingen per bas. '
-  + 'Vermeld bij de P-Bass scene of blokken aan of uit moeten staan om de sound werkbaar te maken voor 4 snaren. '
-  + 'De Spector is 5-snarig (BEADG, actief, EMG-Hz P/HH), de P-Bass is 4-snarig (EADG, actief, Split-P EMG-Hz).';
+function buildSystemDual() {
+  return buildSystemPrompt()
+    + '\n\nDe gebruiker wil presets voor TWEE bassen tegelijk. Genereer twee volledige, aparte presets.'
+    + 'Gebruik exact dit formaat:\n\n'
+    + '==SCENE_SPECTOR==\n'
+    + 'B_SNAAR_VEREIST: ja of nee\n'
+    + 'ARTIEST: [naam]\n'
+    + 'SONG: [naam]\n'
+    + '## TONE ANALYSE\n...\n'
+    + '## SIGNAALCHAIN\n...\n'
+    + '## BLOKKEN\n...\n'
+    + '## FINE-TUNE TIPS\n...\n'
+    + '==SCENE_PBASS==\n'
+    + 'B_SNAAR_VEREIST: nee\n'
+    + 'ARTIEST: [naam]\n'
+    + 'SONG: [naam]\n'
+    + '## TONE ANALYSE\n...\n'
+    + '## SIGNAALCHAIN\n...\n'
+    + '## BLOKKEN\n...\n'
+    + '## FINE-TUNE TIPS\n...\n\n'
+    + 'Beide presets gebruiken dezelfde blokken structuur maar met aangepaste instellingen per bas. '
+    + 'Vermeld bij de P-Bass scene of blokken aan of uit moeten staan om de sound werkbaar te maken voor 4 snaren. '
+    + 'De Spector is 5-snarig (BEADG, actief, EMG-Hz P/HH), de P-Bass is 4-snarig (EADG, actief, Split-P EMG-Hz).';
+}
 
 // =====================
 // ANALYSEER TONE
@@ -77,7 +210,7 @@ var SYSTEM_DUAL = SYSTEM_ANALYZE
 function analyzeTone() {
   var artist = document.getElementById('artistInput').value.trim();
   var song = document.getElementById('songInput').value.trim();
-  if (!artist || !song) { alert('Vul artiest en songtitel in.'); return; }
+  if (!artist || !song) { alert(t('vulInVraag')); return; }
 
   isDualMode = selectedBass === 'beide';
   activeScene = 'spector';
@@ -91,7 +224,7 @@ function analyzeTone() {
 
   var btn = document.getElementById('analyzeBtn');
   btn.disabled = true;
-  document.getElementById('btnText').textContent = 'ANALYSEREN...';
+  document.getElementById('btnText').textContent = t('analyseren');
 
   document.getElementById('outputPanel').classList.remove('hidden');
   document.getElementById('chatPanel').classList.add('hidden');
@@ -99,9 +232,8 @@ function analyzeTone() {
     artist.toUpperCase() + ' \u2014 ' + song.toUpperCase()
     + (isDualMode ? ' \u00b7 SPECTOR + P-BASS' : ' \u00b7 ' + bassLabel.split('(')[0].trim().toUpperCase());
   document.getElementById('outputContent').innerHTML =
-    '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>Bastone analyseren...</p></div>';
+    '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>' + t('bastoneAnalyseren') + '</p></div>';
 
-  // Scene tabs tonen/verbergen
   if (isDualMode) {
     document.getElementById('sceneTabs').classList.remove('hidden');
     document.getElementById('tabSpector').classList.add('active');
@@ -123,7 +255,7 @@ function analyzeTone() {
 
   streamChat(
     chatHistory,
-    isDualMode ? SYSTEM_DUAL : SYSTEM_ANALYZE,
+    isDualMode ? buildSystemDual() : buildSystemPrompt(),
     function(partial) {
       document.getElementById('outputContent').innerHTML = toHtml(partial, isDualMode ? 'spector' : selectedBass);
     },
@@ -154,21 +286,19 @@ function analyzeTone() {
       document.getElementById('chatMessages').innerHTML = '';
       if (isDualMode) {
         document.getElementById('sceneIndicator').classList.remove('hidden');
-        document.getElementById('sceneIndicator').textContent = 'Chat past de actieve scene aan: SCENE 1 \u2014 SPECTOR';
+        document.getElementById('sceneIndicator').textContent = t('chatPastScene') + t('scene1');
       } else {
         document.getElementById('sceneIndicator').classList.add('hidden');
       }
-      addMsg('assistant', isDualMode
-        ? 'Beide presets klaar! Gebruik de tabs om te wisselen.'
-        : 'Preset klaar! Heb je vragen of wil je de sound verder verfijnen?');
+      addMsg('assistant', isDualMode ? t('dualPresetKlaar') : t('presetKlaar'));
       document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
       btn.disabled = false;
-      document.getElementById('btnText').textContent = 'ANALYSEER TONE';
+      document.getElementById('btnText').textContent = t('analyseerTone');
     },
     function(err) {
-      document.getElementById('outputContent').innerHTML = '<p style="color:var(--accent2)">Fout: ' + err + '</p>';
+      document.getElementById('outputContent').innerHTML = '<p style="color:var(--accent2)">' + t('fout') + err + '</p>';
       btn.disabled = false;
-      document.getElementById('btnText').textContent = 'ANALYSEER TONE';
+      document.getElementById('btnText').textContent = t('analyseerTone');
     }
   );
 }
@@ -179,35 +309,25 @@ function analyzeTone() {
 function switchScene(scene) {
   if (!isDualMode || !sceneData[scene]) return;
   activeScene = scene;
-
   document.getElementById('tabSpector').classList.toggle('active', scene === 'spector');
   document.getElementById('tabPbass').classList.toggle('active', scene === 'pbass');
   document.getElementById('outputContent').innerHTML = sceneData[scene].html;
-
-  var sceneLabel = scene === 'spector' ? 'SCENE 1 \u2014 SPECTOR' : 'SCENE 2 \u2014 P-BASS';
-  document.getElementById('sceneIndicator').textContent = 'Chat past de actieve scene aan: ' + sceneLabel;
-
-  // Reset chat context naar actieve scene
+  var sceneLabel = scene === 'spector' ? t('scene1') : t('scene2');
+  document.getElementById('sceneIndicator').textContent = t('chatPastScene') + sceneLabel;
   chatHistory = [
     { role: 'user', content: chatHistory[0] ? chatHistory[0].content : '' },
     { role: 'assistant', content: sceneData[scene].content }
   ];
 }
 
-// =====================
-// DUAL RESPONSE SPLITTER
-// =====================
 function splitDualResponse(text) {
   var spectorIdx = text.indexOf('==SCENE_SPECTOR==');
   var pbassIdx   = text.indexOf('==SCENE_PBASS==');
-
   var spectorText = '', pbassText = '';
-
   if (spectorIdx !== -1 && pbassIdx !== -1) {
     spectorText = text.substring(spectorIdx + '==SCENE_SPECTOR=='.length, pbassIdx).trim();
     pbassText   = text.substring(pbassIdx   + '==SCENE_PBASS=='.length).trim();
   } else {
-    // Fallback: als markers ontbreken, gebruik de hele tekst voor beide
     spectorText = text;
     pbassText   = text;
   }
@@ -224,10 +344,10 @@ function sendChat() {
   input.value = '';
   addMsg('user', msg);
   chatHistory.push({ role: 'user', content: msg });
-  addMsg('assistant', 'Preset wordt bijgewerkt...');
+  addMsg('assistant', t('presetBijwerken'));
 
   document.getElementById('outputContent').innerHTML =
-    '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>Preset bijwerken...</p></div>';
+    '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>' + t('presetBijwerken') + '</p></div>';
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 
   var spectorChat = 'Spector NS Ethos 5 (actief, 5-snarig, neck EMG 40P5 + bridge EMG 40J, EMG BQC mid 100Hz-1kHz, Aguilar OBP-2, EMG 25K tone pot, 18V)';
@@ -236,7 +356,7 @@ function sendChat() {
     ? (activeScene === 'spector' ? spectorChat : pbassChat)
     : (selectedBass === 'spector' ? spectorChat : pbassChat);
 
-  var systemChat = SYSTEM_ANALYZE
+  var systemChat = buildSystemPrompt()
     + '\n\nDe gebruiker verfijnt de preset voor: ' + bassForChat + '. '
     + 'Genereer een VOLLEDIG NIEUW bijgewerkt preset-plan in exact hetzelfde formaat. Geen extra uitleg buiten het preset-plan.';
 
@@ -257,13 +377,13 @@ function sendChat() {
         if (currentPresetData) currentPresetData.content = fullText;
       }
       var lastMsg = document.getElementById('chatMessages').lastElementChild;
-      if (lastMsg) { var b = lastMsg.querySelector('.msg-bubble'); if (b) b.innerHTML = '\u2713 Preset bijgewerkt.'; }
+      if (lastMsg) { var b = lastMsg.querySelector('.msg-bubble'); if (b) b.innerHTML = t('presetBijgewerkt'); }
       document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
     },
     function(err) {
-      document.getElementById('outputContent').innerHTML = '<p style="color:var(--accent2)">Fout: ' + err + '</p>';
+      document.getElementById('outputContent').innerHTML = '<p style="color:var(--accent2)">' + t('fout') + err + '</p>';
       var lastMsg = document.getElementById('chatMessages').lastElementChild;
-      if (lastMsg) { var b = lastMsg.querySelector('.msg-bubble'); if (b) b.textContent = 'Fout: ' + err; }
+      if (lastMsg) { var b = lastMsg.querySelector('.msg-bubble'); if (b) b.textContent = t('fout') + err; }
     }
   );
 }
@@ -285,13 +405,9 @@ function streamChat(messages, system, onChunk, onDone, onError) {
     var decoder = new TextDecoder();
     var buffer = '';
     var fullText = '';
-
     function read() {
       reader.read().then(function(result) {
-        if (result.done) {
-          onDone(fullText);
-          return;
-        }
+        if (result.done) { onDone(fullText); return; }
         buffer += decoder.decode(result.value, { stream: true });
         var lines = buffer.split('\n');
         buffer = lines.pop();
@@ -301,10 +417,7 @@ function streamChat(messages, system, onChunk, onDone, onError) {
             if (data === '[DONE]') return;
             try {
               var parsed = JSON.parse(data);
-              if (parsed.text) {
-                fullText += parsed.text;
-                onChunk(fullText);
-              }
+              if (parsed.text) { fullText += parsed.text; onChunk(fullText); }
             } catch(e) {}
           }
         });
@@ -321,7 +434,7 @@ function addMsg(role, text, id) {
   var d = document.createElement('div');
   d.className = 'msg ' + role;
   if (id) d.id = id;
-  d.innerHTML = '<span class="msg-role">' + (role === 'user' ? 'JIJ' : 'ANAGRAM AI') + '</span>'
+  d.innerHTML = '<span class="msg-role">' + (role === 'user' ? t('jij') : t('aiNaam')) + '</span>'
     + '<div class="msg-bubble">' + toHtmlSimple(text) + '</div>';
   c.appendChild(d);
   c.scrollTop = c.scrollHeight;
@@ -333,57 +446,50 @@ function addMsg(role, text, id) {
 var presetsCache = {};
 
 function savePreset() {
-  if (!currentPresetData) { alert('Geen preset om op te slaan.'); return; }
+  if (!currentPresetData) { alert(t('geenPreset')); return; }
   var id = Date.now().toString();
-  var datum = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
+  var datum = new Date().toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
   var bestaatAl = false;
   for (var key in presetsCache) {
     if (presetsCache[key].artist === currentPresetData.artist && presetsCache[key].song === currentPresetData.song) { bestaatAl = true; break; }
   }
   var label = '';
   if (bestaatAl) {
-    var inp = window.prompt('Er bestaat al een preset voor dit nummer.\nGeef 2-3 steekwoorden voor deze versie:', '');
+    var inp = window.prompt(t('bestaatAlPrompt'), '');
     if (inp === null) return;
     label = inp.trim();
   }
-
   var preset = {
-    id: id,
-    artist: currentPresetData.artist,
-    song: currentPresetData.song,
-    bass: currentPresetData.bass,
+    id: id, artist: currentPresetData.artist, song: currentPresetData.song, bass: currentPresetData.bass,
     isDual: currentPresetData.isDual || false,
     content: currentPresetData.isDual ? null : currentPresetData.content,
     sceneSpector: currentPresetData.isDual ? currentPresetData.sceneData.spector.content : null,
     scenePbass:   currentPresetData.isDual ? currentPresetData.sceneData.pbass.content   : null,
-    datum: datum,
-    label: label
+    datum: datum, label: label
   };
-
   var btn = document.getElementById('saveBtn');
-  btn.disabled = true; btn.textContent = 'OPSLAAN...';
+  btn.disabled = true; btn.textContent = t('opslaanBezig');
   fetch('/api/presets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preset: preset }) })
   .then(function(r) { return r.json(); })
   .then(function(d) {
     if (d.error) throw new Error(d.error);
     presetsCache[id] = preset;
     renderSavedPanel();
-    btn.textContent = '\u2713 OPGESLAGEN';
+    btn.textContent = t('opgeslagen');
     btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent)';
-    setTimeout(function() { btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN'; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; }, 2000);
+    setTimeout(function() {
+      btn.innerHTML = '<span>&#9632;</span> <span data-i18n="presetOpslaan">' + t('presetOpslaan') + '</span>';
+      btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false;
+    }, 2000);
   })
-  .catch(function(e) { alert('Opslaan mislukt: ' + e.message); btn.innerHTML = '<span>&#9632;</span> PRESET OPSLAAN'; btn.disabled = false; });
+  .catch(function(e) { alert('Fout: ' + e.message); btn.innerHTML = '<span>&#9632;</span> ' + t('presetOpslaan'); btn.disabled = false; });
 }
 
 function loadPreset(id) {
   var p = presetsCache[id]; if (!p) return;
-
   isDualMode = p.isDual || false;
   activeScene = 'spector';
-
   document.getElementById('outputMeta').textContent = p.artist.toUpperCase() + ' \u2014 ' + p.song.toUpperCase() + ' \u00b7 ' + p.bass.toUpperCase();
-
   if (isDualMode && p.sceneSpector && p.scenePbass) {
     sceneData.spector = { content: p.sceneSpector, html: toHtml(p.sceneSpector, 'spector') };
     sceneData.pbass   = { content: p.scenePbass,   html: toHtml(p.scenePbass, 'pbass') };
@@ -393,29 +499,28 @@ function loadPreset(id) {
     document.getElementById('outputContent').innerHTML = sceneData.spector.html;
     currentPresetData = { artist: p.artist, song: p.song, bass: p.bass, isDual: true, sceneData: sceneData };
     document.getElementById('sceneIndicator').classList.remove('hidden');
-    document.getElementById('sceneIndicator').textContent = 'Chat past de actieve scene aan: SCENE 1 \u2014 SPECTOR';
+    document.getElementById('sceneIndicator').textContent = t('chatPastScene') + t('scene1');
   } else {
     document.getElementById('sceneTabs').classList.add('hidden');
     document.getElementById('sceneIndicator').classList.add('hidden');
     document.getElementById('outputContent').innerHTML = toHtml(p.content || '', 'spector');
     currentPresetData = { artist: p.artist, song: p.song, bass: p.bass, content: p.content, isDual: false };
   }
-
   document.getElementById('outputPanel').classList.remove('hidden');
   document.getElementById('chatPanel').classList.remove('hidden');
   document.getElementById('chatMessages').innerHTML = '';
   chatHistory = [];
   chatContext = p.artist + ' - ' + p.song + ' | ' + p.bass;
-  addMsg('assistant', 'Preset geladen! Wil je nog aanpassingen maken?');
+  addMsg('assistant', t('presetGeladen'));
   document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
 }
 
 function deletePreset(id) {
-  if (!window.confirm('Preset verwijderen?')) return;
+  if (!window.confirm(t('verwijderenVraag'))) return;
   fetch('/api/presets', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) })
   .then(function(r) { return r.json(); })
   .then(function(d) { if (d.error) throw new Error(d.error); delete presetsCache[id]; renderSavedPanel(); })
-  .catch(function(e) { alert('Verwijderen mislukt: ' + e.message); });
+  .catch(function(e) { alert(t('fout') + e.message); });
 }
 
 function renderSavedPanel() {
@@ -426,14 +531,15 @@ function renderSavedPanel() {
   panel.classList.remove('hidden');
   list.innerHTML = keys.map(function(id) {
     var p = presetsCache[id];
-    var subtitle = p.bass + ' \u00b7 ' + p.datum;
+    var subtitle = (p.bass || '').split('(')[0].trim() + ' \u00b7 ' + p.datum;
     if (p.label) subtitle += ' \u00b7 ' + p.label;
     var dualBadge = p.isDual ? '<span style="font-size:0.55rem;color:var(--accent2);border:1px solid var(--accent2);padding:0.1rem 0.35rem;border-radius:2px;margin-left:0.5rem;font-family:var(--font-a);letter-spacing:0.1em">2 SCENES</span>' : '';
+    var loadLabel = currentLang === 'en' ? 'LOAD' : 'LADEN';
     return '<div class="saved-item"><div class="saved-item-header"><div>'
       + '<div class="saved-item-title">' + p.artist + ' \u2014 ' + p.song + dualBadge + '</div>'
       + '<div class="saved-item-date">' + subtitle + '</div>'
       + '</div><div class="saved-item-actions">'
-      + '<button class="saved-action-btn btn-load" onclick="loadPreset(\'' + id + '\')">LADEN</button>'
+      + '<button class="saved-action-btn btn-load" onclick="loadPreset(\'' + id + '\')">' + loadLabel + '</button>'
       + '<button class="saved-action-btn btn-delete" onclick="deletePreset(\'' + id + '\')">&#10005;</button>'
       + '</div></div></div>';
   }).join('');
@@ -445,7 +551,6 @@ function laadAllePresets() {
   .then(function(d) { presetsCache = d.presets || {}; renderSavedPanel(); })
   .catch(function(e) { console.error('Presets laden mislukt:', e.message); });
 }
-laadAllePresets();
 
 // =====================
 // API STATUS CHECK
@@ -455,34 +560,24 @@ function checkApiStatus() {
   if (!el) return;
   el.className = 'api-status ok';
   el.innerHTML = '<span class="api-status-dot"></span> CHECKING...';
-
   fetch('/api/status')
-  .then(function(r) {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  })
+  .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
   .then(function(d) {
     if (d.hasIncident || d.degraded) {
       el.className = 'api-status ' + (d.degraded ? 'err' : 'warn');
-      var label = d.degraded ? 'API STORING' : 'API MELDING';
       var names = (d.incidents || []).map(function(i) { return i.name; }).join(', ');
-      el.innerHTML = '<span class="api-status-dot"></span> ' + label;
+      el.innerHTML = '<span class="api-status-dot"></span> ' + (d.degraded ? 'API STORING' : 'API MELDING');
       el.title = names || 'Melding op Anthropic statuspagina';
     } else {
       el.className = 'api-status ok';
       el.innerHTML = '<span class="api-status-dot"></span> API OK';
-      el.title = 'Anthropic API werkt normaal';
     }
   })
-  .catch(function(e) {
+  .catch(function() {
     el.className = 'api-status ok';
     el.innerHTML = '<span class="api-status-dot"></span> API OK';
-    el.title = 'Status: ' + e.message;
   });
 }
-
-checkApiStatus();
-setInterval(checkApiStatus, 180000);
 
 // =====================
 // B-SNAAR DETECTIE
@@ -500,7 +595,7 @@ function checkBSnaar(tekst) {
 }
 
 // =====================
-// KNOB — unipolair
+// VISUELE CONTROLS
 // =====================
 function makeKnob(label, value, unit, pct) {
   pct = Math.max(0, Math.min(1, pct));
@@ -524,9 +619,6 @@ function makeKnob(label, value, unit, pct) {
     + '</svg><div class="knob-label">' + label + '</div></div>';
 }
 
-// =====================
-// KNOB — bipolair
-// =====================
 function makeKnobBipolar(label, value, unit, pct) {
   pct = Math.max(-1, Math.min(1, pct));
   var cx = 30, cy = 30, r = 22;
@@ -609,9 +701,6 @@ function renderSettingVisual(param, value) {
   return makeTextBadge(p, v);
 }
 
-// =====================
-// SIGNAALCHAIN RENDERER
-// =====================
 function renderChainRegel(chainStr) {
   var norm = chainStr.replace(/\u2192/g, '>').replace(/->/g, '>');
   var blokken = norm.split('>').map(function(b) { return b.trim(); }).filter(Boolean);
@@ -626,19 +715,17 @@ function renderChainRegel(chainStr) {
 // =====================
 // HTML RENDERER
 // =====================
-function toHtml(t, bassContext) {
-  var regels = t.split('\n');
+function toHtml(txt, bassContext) {
+  var regels = txt.split('\n');
   var html = '';
   var inBlok = false, blokNaam = '', blokSettings = [], blokUitleg = '';
   var blokTeller = 0, inChain = false, chainHtml = '', inTips = false;
 
-  // B-snaar waarschuwing alleen voor pbass context
-  var showBsnaar = (bassContext === 'pbass') && checkBSnaar(t);
+  var showBsnaar = (bassContext === 'pbass') && checkBSnaar(txt);
   if (showBsnaar) {
     html += '<div class="bsnaar-warning"><span class="bsnaar-icon">\u26a0</span>'
-      + '<div><strong>Let op: 4-snarige bas</strong><br>'
-      + 'Dit nummer maakt waarschijnlijk gebruik van een lage B-snaar. '
-      + 'Met je Fender Precision Bass kun je mogelijk niet alle noten spelen zoals in het origineel.</div></div>';
+      + '<div><strong>' + t('bsnaarTitel') + '</strong><br>'
+      + t('bsnaarTekst') + '</div></div>';
   }
 
   function sluitBlok() {
@@ -660,6 +747,14 @@ function toHtml(t, bassContext) {
   function sluitChain() { if (!inChain) return; html += '<div class="chain-container">' + chainHtml + '</div>'; chainHtml = ''; inChain = false; }
   function sluitTips() { if (!inTips) return; html += '</div>'; inTips = false; }
 
+  // Sectie-titel labels per taal
+  var SECTIE_LABEL = {
+    'TONE ANALYSE': currentLang === 'en' ? 'TONE ANALYSIS' : 'TONE ANALYSE',
+    'SIGNAALCHAIN': currentLang === 'en' ? 'SIGNAL CHAIN' : 'SIGNAALCHAIN',
+    'BLOKKEN':      currentLang === 'en' ? 'BLOCKS' : 'BLOKKEN',
+    'FINE-TUNE TIPS': 'FINE-TUNE TIPS'
+  };
+
   for (var i = 0; i < regels.length; i++) {
     var r = regels[i].trim();
     if (!r) continue;
@@ -669,14 +764,15 @@ function toHtml(t, bassContext) {
     if (r.startsWith('## ')) {
       sluitBlok(); sluitChain(); sluitTips();
       var sectie = r.replace('## ', '');
-      if (sectie === 'SIGNAALCHAIN') { html += '<div class="sectie-titel">SIGNAALCHAIN</div>'; inChain = true; chainHtml = ''; }
-      else if (sectie === 'FINE-TUNE TIPS') { html += '<div class="sectie-titel">FINE-TUNE TIPS</div><div class="tip-box">'; inTips = true; }
-      else { html += '<div class="sectie-titel">' + sectie + '</div>'; }
+      var displayLabel = SECTIE_LABEL[sectie] || sectie;
+      if (sectie === 'SIGNAALCHAIN') { html += '<div class="sectie-titel">' + displayLabel + '</div>'; inChain = true; chainHtml = ''; }
+      else if (sectie === 'FINE-TUNE TIPS') { html += '<div class="sectie-titel">' + displayLabel + '</div><div class="tip-box">'; inTips = true; }
+      else { html += '<div class="sectie-titel">' + displayLabel + '</div>'; }
       continue;
     }
 
     if (inChain) {
-      if (r === 'SERIEEL') chainHtml += '<div class="chain-row"><span class="parallel-badge" style="border-color:var(--accent);color:var(--accent)">\u2192 SERIEEL</span></div>';
+      if (r === 'SERIEEL') chainHtml += '<div class="chain-row"><span class="parallel-badge" style="border-color:var(--accent);color:var(--accent)">\u2192 ' + (currentLang === 'en' ? 'SERIAL' : 'SERIEEL') + '</span></div>';
       else if (r === 'PARALLEL') chainHtml += '<div class="chain-row"><span class="parallel-badge">\u21c4 PARALLEL ROUTING</span></div>';
       else if (r.startsWith('CHAIN_A:')) chainHtml += '<div class="chain-row"><span class="chain-label">A</span>' + renderChainRegel(r.replace('CHAIN_A:', '').trim()) + '</div>';
       else if (r.startsWith('CHAIN_B:')) chainHtml += '<div class="chain-row"><span class="chain-label">B</span>' + renderChainRegel(r.replace('CHAIN_B:', '').trim()) + '</div>';
@@ -690,9 +786,11 @@ function toHtml(t, bassContext) {
     if (r.startsWith('### ')) { sluitBlok(); blokTeller++; inBlok = true; blokNaam = r.replace('### ', ''); continue; }
 
     if (inBlok) {
-      if (r === 'INSTELLINGEN:') continue;
+      if (r === 'INSTELLINGEN:' || r === 'SETTINGS:') continue;
       if (r.startsWith('- ')) { blokSettings.push(r); }
-      else if (r.startsWith('UITLEG:')) { blokUitleg = r.replace('UITLEG:', '').trim(); }
+      else if (r.startsWith('UITLEG:') || r.startsWith('EXPLANATION:')) {
+        blokUitleg = r.replace(/^(UITLEG|EXPLANATION):/, '').trim();
+      }
       continue;
     }
 
@@ -707,3 +805,11 @@ function toHtml(t, bassContext) {
 function toHtmlSimple(t) {
   return t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/`(.+?)`/g, '<code>$1</code>').replace(/\n/g, '<br>');
 }
+
+// =====================
+// INIT
+// =====================
+applyTranslations();
+laadAllePresets();
+checkApiStatus();
+setInterval(checkApiStatus, 180000);

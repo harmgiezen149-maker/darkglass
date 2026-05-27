@@ -14,10 +14,14 @@
       <div class="logo-mark">DG</div>
       <div class="logo-text">
         <span class="logo-title">ANAGRAM</span>
-        <span class="logo-sub">TONE ARCHITECT</span>
+        <span class="logo-sub" data-i18n="logoSub">TONE ARCHITECT</span>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:1rem;">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <select id="langSelect" class="lang-select" onchange="setLanguage(this.value)">
+        <option value="nl">NL</option>
+        <option value="en">EN</option>
+      </select>
       <div id="apiStatus" class="api-status ok" title="Anthropic API status"><span class="api-status-dot"></span> API OK</div>
       <div class="header-dots">
         <span class="dot active"></span><span class="dot"></span><span class="dot"></span>
@@ -28,55 +32,58 @@
   <main>
 
     <section class="panel" id="setupPanel">
-      <div class="panel-label">01 / SETUP</div>
+      <div class="panel-label" data-i18n="panel01">01 / SETUP</div>
 
       <div class="field-group">
-        <label class="field-label">BASS SELECTIE</label>
+        <label class="field-label" data-i18n="bassSelectie">BASS SELECTIE</label>
         <div class="bass-selector bass-selector-3">
           <button class="bass-btn active" data-bass="spector">
             <span class="bass-name">SPECTOR NS ETHOS 5</span>
-            <span class="bass-detail">Actief &middot; 5-snarig &middot; EMG-Hz P/HH</span>
+            <span class="bass-detail" data-i18n="spectorDetail">Actief &middot; 5-snarig &middot; EMG-Hz P/HH</span>
           </button>
           <button class="bass-btn" data-bass="pbass">
             <span class="bass-name">FENDER PRECISION BASS</span>
-            <span class="bass-detail">Actief &middot; 4-snarig &middot; Split-P EMG-Hz</span>
+            <span class="bass-detail" data-i18n="pbassDetail">Actief &middot; 4-snarig &middot; Split-P EMG-Hz</span>
           </button>
           <button class="bass-btn bass-btn-dual" data-bass="beide">
-            <span class="bass-name">BEIDE BASSEN</span>
-            <span class="bass-detail">2 scenes &middot; Spector + P-Bass</span>
+            <span class="bass-name" data-i18n="beideBassen">BEIDE BASSEN</span>
+            <span class="bass-detail" data-i18n="beideDetail">2 scenes &middot; Spector + P-Bass</span>
           </button>
         </div>
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="artistInput">ARTIEST</label>
-        <input type="text" id="artistInput" class="text-input" placeholder="bijv. Tool, Karnivool, VOLA..." />
+        <label class="field-label" for="artistInput" data-i18n="artiest">ARTIEST</label>
+        <input type="text" id="artistInput" class="text-input" data-i18n-placeholder="artiestPh" placeholder="bijv. Tool, Karnivool, VOLA..." />
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="songInput">SONGTITEL</label>
-        <input type="text" id="songInput" class="text-input" placeholder="bijv. Schism, We Are, Straight Lines..." />
+        <label class="field-label" for="songInput" data-i18n="songtitel">SONGTITEL</label>
+        <input type="text" id="songInput" class="text-input" data-i18n-placeholder="songPh" placeholder="bijv. Schism, We Are, Straight Lines..." />
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="extraInput">EXTRA WENSEN <span class="field-label-opt">(optioneel)</span></label>
-        <textarea id="extraInput" class="text-input text-area" rows="3" placeholder="bijv: meer distortion dan het origineel, parallelle processing nodig..."></textarea>
+        <label class="field-label" for="extraInput">
+          <span data-i18n="extraWensen">EXTRA WENSEN</span>
+          <span class="field-label-opt" data-i18n="optioneel">(optioneel)</span>
+        </label>
+        <textarea id="extraInput" class="text-input text-area" rows="3" data-i18n-placeholder="extraPh" placeholder="bijv: meer distortion dan het origineel, parallelle processing nodig..."></textarea>
       </div>
 
       <button class="analyze-btn" id="analyzeBtn" onclick="analyzeTone()">
-        <span id="btnText">ANALYSEER TONE</span>
+        <span id="btnText" data-i18n="analyseerTone">ANALYSEER TONE</span>
         <span>&#8594;</span>
       </button>
     </section>
 
     <section class="panel hidden" id="outputPanel">
-      <div class="panel-label">02 / ANAGRAM PRESET</div>
+      <div class="panel-label" data-i18n="panel02">02 / ANAGRAM PRESET</div>
       <div class="output-meta" id="outputMeta"></div>
       <div class="scene-tabs hidden" id="sceneTabs">
-        <button class="scene-tab active" id="tabSpector" onclick="switchScene('spector')">
+        <button class="scene-tab active" id="tabSpector" onclick="switchScene('spector')" data-i18n="scene1">
           SCENE 1 &mdash; SPECTOR NS ETHOS 5
         </button>
-        <button class="scene-tab" id="tabPbass" onclick="switchScene('pbass')">
+        <button class="scene-tab" id="tabPbass" onclick="switchScene('pbass')" data-i18n="scene2">
           SCENE 2 &mdash; FENDER P-BASS
         </button>
       </div>
@@ -84,28 +91,28 @@
     </section>
 
     <section class="panel hidden" id="chatPanel">
-      <div class="panel-label">03 / FINE-TUNE CHAT</div>
+      <div class="panel-label" data-i18n="panel03">03 / FINE-TUNE CHAT</div>
       <div class="scene-indicator hidden" id="sceneIndicator"></div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-row">
-        <input type="text" id="chatInput" class="text-input" placeholder="Stel een vraag of geef een aanpassing..." onkeydown="if(event.key==='Enter') sendChat()" />
+        <input type="text" id="chatInput" class="text-input" data-i18n-placeholder="chatPh" placeholder="Stel een vraag of geef een aanpassing..." onkeydown="if(event.key==='Enter') sendChat()" />
         <button class="send-btn" onclick="sendChat()">&#9658;</button>
       </div>
       <div class="save-row">
         <button class="save-btn" id="saveBtn" onclick="savePreset()">
-          <span>&#9632;</span> PRESET OPSLAAN
+          <span>&#9632;</span> <span data-i18n="presetOpslaan">PRESET OPSLAAN</span>
         </button>
       </div>
     </section>
 
     <section class="panel hidden" id="savedPanel">
-      <div class="panel-label">04 / OPGESLAGEN PRESETS</div>
+      <div class="panel-label" data-i18n="panel04">04 / OPGESLAGEN PRESETS</div>
       <div class="saved-list" id="savedList"></div>
     </section>
 
   </main>
 
-  <footer>DARKGLASS ANAGRAM TONE ARCHITECT &mdash; HARM'S SIGNAL CHAIN</footer>
+  <footer data-i18n="footer">DARKGLASS ANAGRAM TONE ARCHITECT &mdash; HARM'S SIGNAL CHAIN</footer>
   <script src="script.js"></script>
 </body>
 </html>

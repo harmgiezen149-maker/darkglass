@@ -240,3 +240,20 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 .api-status.ok .api-status-dot { background: var(--accent); box-shadow: 0 0 5px var(--accent); animation: pulse 2s infinite; }
 .api-status.warn .api-status-dot { background: #f5a623; box-shadow: 0 0 5px #f5a623; animation: pulse 1s infinite; }
 .api-status.err .api-status-dot { background: var(--accent2); box-shadow: 0 0 5px var(--accent2); animation: pulse 0.5s infinite; }
+
+/* LANG SELECT */
+.lang-select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-a);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.lang-select:hover, .lang-select:focus { border-color: var(--accent3); }
+.lang-select option { background: var(--bg2); color: var(--text); }
