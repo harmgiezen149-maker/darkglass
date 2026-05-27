@@ -1,7 +1,7 @@
 // =====================
 // TAAL / I18N
 // =====================
-var currentLang = localStorage.getItem('dg_lang') || 'nl';
+var currentLang = localStorage.getItem('dg_lang') || 'en';
 
 var I18N = {
   nl: {
