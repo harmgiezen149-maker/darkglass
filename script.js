@@ -1,7 +1,7 @@
 // =====================
 // TAAL / I18N
 // =====================
-var currentLang = localStorage.getItem('dg_lang') || 'en';
+var currentLang = localStorage.getItem('dg_lang') || 'nl';
 
 var I18N = {
   nl: {
@@ -253,6 +253,8 @@ function analyzeTone() {
   chatContext = artist + ' - ' + song + (isDualMode ? ' | BEIDE BASSEN' : ' | ' + bassLabel);
   currentPresetData = null;
 
+  trackEvent('analyse', { bass: selectedBass });
+
   streamChat(
     chatHistory,
     isDualMode ? buildSystemDual() : buildSystemPrompt(),
@@ -475,6 +477,7 @@ function savePreset() {
     if (d.error) throw new Error(d.error);
     presetsCache[id] = preset;
     renderSavedPanel();
+    trackEvent('save', { bass: preset.isDual ? 'beide' : (currentPresetData.bass.indexOf('Spector') !== -1 ? 'spector' : 'pbass') });
     btn.textContent = t('opgeslagen');
     btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent)';
     setTimeout(function() {
@@ -813,3 +816,20 @@ applyTranslations();
 laadAllePresets();
 checkApiStatus();
 setInterval(checkApiStatus, 180000);
+
+// Tracking helper
+function trackEvent(event, meta) {
+  try {
+    fetch('/api/stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: event, meta: meta || {} })
+    }).catch(function() {});
+  } catch(e) {}
+}
+
+// Track visit (alleen 1x per sessie)
+if (!sessionStorage.getItem('dg_visit_tracked')) {
+  trackEvent('visit');
+  sessionStorage.setItem('dg_visit_tracked', '1');
+}

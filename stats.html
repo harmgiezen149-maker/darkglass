@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anagram Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0b; --bg2: #111114; --bg3: #1a1a1f;
+      --border: #2a2a32; --border-bright: #3d3d4d;
+      --accent: #00e5b0; --accent2: #ff4d6d; --accent3: #7c5cfc;
+      --text: #e8e8f0; --text-dim: #b0b0c8; --text-dimmer: #9898b0;
+      --font-a: 'Oxanium', monospace; --font-b: 'Space Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-b); min-height: 100vh; display: flex; flex-direction: column; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); background: var(--bg2); }
+    .logo-group { display: flex; align-items: center; gap: 0.875rem; }
+    .logo-mark { width: 40px; height: 40px; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--font-a); font-weight: 700; font-size: 0.8rem; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+    .logo-title { font-family: var(--font-a); font-weight: 700; font-size: 1rem; letter-spacing: 0.2em; }
+    .logo-sub { font-size: 0.6rem; letter-spacing: 0.3em; color: var(--accent); }
+    .header-link { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); text-decoration: none; border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 4px; }
+    .header-link:hover { color: var(--accent); border-color: var(--accent); }
+    main { flex: 1; max-width: 900px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+    .login-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 2rem; max-width: 400px; margin: 4rem auto; }
+    .login-box h2 { font-family: var(--font-a); font-size: 0.85rem; letter-spacing: 0.2em; margin-bottom: 1rem; color: var(--accent); }
+    .login-box label { display: block; font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); margin-bottom: 0.5rem; }
+    .login-box input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: var(--font-b); font-size: 0.85rem; padding: 0.75rem; border-radius: 3px; margin-bottom: 1rem; outline: none; }
+    .login-box input:focus { border-color: var(--accent3); }
+    .login-box button { width: 100%; background: var(--accent); color: var(--bg); border: none; padding: 0.75rem; font-family: var(--font-a); font-size: 0.7rem; letter-spacing: 0.2em; cursor: pointer; border-radius: 3px; font-weight: 700; }
+    .login-box .err { color: var(--accent2); font-size: 0.7rem; margin-top: 0.5rem; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem; border-left: 3px solid var(--accent); }
+    .stat-card .label { font-family: var(--font-a); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dim); margin-bottom: 0.5rem; }
+    .stat-card .num { font-family: var(--font-a); font-size: 2.5rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    .stat-card .sub { font-size: 0.62rem; color: var(--text-dimmer); margin-top: 0.4rem; }
+
+    .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1.5rem; }
+    .panel-label { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.3em; color: var(--accent); padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+
+    .bass-bars { display: flex; flex-direction: column; gap: 0.875rem; }
+    .bass-bar-row { display: flex; align-items: center; gap: 0.875rem; }
+    .bass-bar-label { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.1em; color: var(--text-dim); min-width: 100px; }
+    .bass-bar-track { flex: 1; height: 18px; background: var(--bg3); border-radius: 9px; overflow: hidden; }
+    .bass-bar-fill { height: 100%; transition: width 0.4s; }
+    .bass-bar-fill.spector { background: var(--accent); }
+    .bass-bar-fill.pbass { background: var(--accent3); }
+    .bass-bar-fill.beide { background: var(--accent2); }
+    .bass-bar-num { font-family: var(--font-b); font-weight: 700; min-width: 50px; text-align: right; color: var(--text); }
+
+    .day-chart { display: flex; align-items: flex-end; gap: 3px; height: 140px; padding-top: 1rem; }
+    .day-bar { flex: 1; background: var(--accent3); border-radius: 2px 2px 0 0; min-height: 2px; transition: background 0.2s; position: relative; cursor: default; }
+    .day-bar:hover { background: var(--accent); }
+    .day-bar:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--border); padding: 0.25rem 0.5rem; font-size: 0.6rem; white-space: nowrap; border-radius: 3px; margin-bottom: 4px; }
+    .day-axis { display: flex; justify-content: space-between; font-size: 0.55rem; color: var(--text-dimmer); margin-top: 0.5rem; font-family: var(--font-a); letter-spacing: 0.05em; }
+
+    .last-event { font-family: var(--font-b); font-size: 0.72rem; color: var(--text-dim); padding: 0.5rem 0.75rem; background: var(--bg3); border-radius: 3px; }
+    .last-event strong { color: var(--accent); font-family: var(--font-a); letter-spacing: 0.1em; }
+
+    .hidden { display: none !important; }
+    footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dimmer); background: var(--bg2); margin-top: 2rem; }
+    @media (max-width: 600px) {
+      .stat-grid { grid-template-columns: 1fr; }
+      main { padding: 1rem; }
+      header { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-group">
+    <div class="logo-mark">DG</div>
+    <div>
+      <div class="logo-title">ANAGRAM</div>
+      <div class="logo-sub">USAGE STATS</div>
+    </div>
+  </div>
+  <a href="/" class="header-link">← APP</a>
+</header>
+
+<main>
+
+  <div id="loginView" class="login-box">
+    <h2>STATS TOEGANG</h2>
+    <label for="pwInput">WACHTWOORD</label>
+    <input type="password" id="pwInput" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()" />
+    <button onclick="doLogin()">INLOGGEN</button>
+    <div id="loginErr" class="err hidden"></div>
+  </div>
+
+  <div id="dashView" class="hidden">
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="label">TOTAAL ANALYSES</div>
+        <div class="num" id="numAnalyses">0</div>
+        <div class="sub">tone analyses uitgevoerd</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">OPGESLAGEN PRESETS</div>
+        <div class="num" id="numSaves">0</div>
+        <div class="sub">presets bewaard</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">PAGINA BEZOEKEN</div>
+        <div class="num" id="numVisits">0</div>
+        <div class="sub">app geopend</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">BAS KEUZE VERDELING</div>
+      <div class="bass-bars" id="bassBars"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">ANALYSES AFGELOPEN 30 DAGEN</div>
+      <div class="day-chart" id="dayChart"></div>
+      <div class="day-axis" id="dayAxis"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">LAATSTE ACTIVITEIT</div>
+      <div class="last-event" id="lastEvent">Geen activiteit gevonden.</div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>ANAGRAM TONE ARCHITECT — USAGE STATS</footer>
+
+<script>
+function doLogin() {
+  var pw = document.getElementById('pwInput').value;
+  if (!pw) return;
+  laadStats(pw);
+}
+
+function laadStats(pw) {
+  fetch('/api/stats?pw=' + encodeURIComponent(pw))
+  .then(function(r) {
+    if (r.status === 401) throw new Error('Verkeerd wachtwoord');
+    return r.json();
+  })
+  .then(function(d) {
+    if (d.error) throw new Error(d.error);
+    sessionStorage.setItem('stats_pw', pw);
+    toonDashboard(d);
+  })
+  .catch(function(e) {
+    var err = document.getElementById('loginErr');
+    err.textContent = 'Fout: ' + e.message;
+    err.classList.remove('hidden');
+  });
+}
+
+function toonDashboard(d) {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+
+  document.getElementById('numAnalyses').textContent = d.totalen.analyses;
+  document.getElementById('numSaves').textContent = d.totalen.saves;
+  document.getElementById('numVisits').textContent = d.totalen.visits;
+
+  // Bas bars
+  var totalBass = d.bassen.spector + d.bassen.pbass + d.bassen.beide;
+  var bb = document.getElementById('bassBars');
+  bb.innerHTML = '';
+  ['spector', 'pbass', 'beide'].forEach(function(key) {
+    var aantal = d.bassen[key];
+    var pct = totalBass > 0 ? (aantal / totalBass * 100) : 0;
+    var labels = { spector: 'SPECTOR NS5', pbass: 'P-BASS', beide: 'BEIDE BASSEN' };
+    bb.innerHTML += '<div class="bass-bar-row">'
+      + '<div class="bass-bar-label">' + labels[key] + '</div>'
+      + '<div class="bass-bar-track"><div class="bass-bar-fill ' + key + '" style="width:' + pct.toFixed(1) + '%"></div></div>'
+      + '<div class="bass-bar-num">' + aantal + '</div>'
+      + '</div>';
+  });
+
+  // Dagen chart
+  var maxDag = Math.max.apply(null, d.dagen.map(function(x) { return x.aantal; }));
+  if (maxDag === 0) maxDag = 1;
+  var chart = document.getElementById('dayChart');
+  chart.innerHTML = '';
+  d.dagen.forEach(function(day) {
+    var h = (day.aantal / maxDag * 100);
+    chart.innerHTML += '<div class="day-bar" data-tip="' + day.datum + ': ' + day.aantal + '" style="height:' + Math.max(h, 2) + '%"></div>';
+  });
+  var axis = document.getElementById('dayAxis');
+  axis.innerHTML = '<span>' + d.dagen[0].datum.substring(5) + '</span>'
+    + '<span>' + d.dagen[14].datum.substring(5) + '</span>'
+    + '<span>' + d.dagen[29].datum.substring(5) + '</span>';
+
+  // Laatste event
+  if (d.laatsteEvent) {
+    var datum = new Date(d.laatsteEvent.ts);
+    var dStr = datum.toLocaleString('nl-NL');
+    var metaStr = d.laatsteEvent.meta && d.laatsteEvent.meta.bass ? ' · bas: ' + d.laatsteEvent.meta.bass : '';
+    document.getElementById('lastEvent').innerHTML = '<strong>' + d.laatsteEvent.event.toUpperCase() + '</strong> · ' + dStr + metaStr;
+  }
+}
+
+// Auto-login als wachtwoord nog in session zit
+var savedPw = sessionStorage.getItem('stats_pw');
+if (savedPw) laadStats(savedPw);
+</script>
+
+</body>
+</html>
