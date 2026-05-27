@@ -257,3 +257,8 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 }
 .lang-select:hover, .lang-select:focus { border-color: var(--accent3); }
 .lang-select option { background: var(--bg2); color: var(--text); }
+
+/* VERTAAL KNOP */
+.save-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.translate-btn { border-color: var(--accent2) !important; color: var(--accent2) !important; }
+.translate-btn:hover { background: rgba(255,77,109,0.08); }

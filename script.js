@@ -30,6 +30,10 @@ var I18N = {
     presetOpslaan: 'PRESET OPSLAAN',
     opslaanBezig: 'OPSLAAN...',
     opgeslagen: '✓ OPGESLAGEN',
+    vertaalKnop: 'VERTAAL',
+    vertalenBezig: 'VERTALEN...',
+    vertaaldKlaar: '✓ Preset vertaald.',
+    geenContentVertalen: 'Geen preset om te vertalen.',
     footer: "DARKGLASS ANAGRAM TONE ARCHITECT — HARM'S SIGNAL CHAIN",
     // dynamische teksten
     bastoneAnalyseren: 'Bastone analyseren...',
@@ -76,6 +80,10 @@ var I18N = {
     presetOpslaan: 'SAVE PRESET',
     opslaanBezig: 'SAVING...',
     opgeslagen: '✓ SAVED',
+    vertaalKnop: 'TRANSLATE',
+    vertalenBezig: 'TRANSLATING...',
+    vertaaldKlaar: '✓ Preset translated.',
+    geenContentVertalen: 'No preset to translate.',
     footer: "DARKGLASS ANAGRAM TONE ARCHITECT — HARM'S SIGNAL CHAIN",
     bastoneAnalyseren: 'Analyzing bass tone...',
     presetBijwerken: 'Updating preset...',
@@ -486,6 +494,73 @@ function savePreset() {
     }, 2000);
   })
   .catch(function(e) { alert('Fout: ' + e.message); btn.innerHTML = '<span>&#9632;</span> ' + t('presetOpslaan'); btn.disabled = false; });
+}
+
+// =====================
+// VERTAAL PRESET
+// =====================
+function translatePreset() {
+  if (!currentPresetData) { alert(t('geenContentVertalen')); return; }
+
+  var doelTaal = currentLang === 'en' ? 'English' : 'Nederlands';
+  var btn = document.getElementById('translateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span>&#8635;</span> ' + t('vertalenBezig');
+
+  document.getElementById('outputContent').innerHTML =
+    '<div class="loading"><div class="vu"><span></span><span></span><span></span><span></span><span></span><span></span></div><p>' + t('vertalenBezig') + '</p></div>';
+  document.getElementById('outputPanel').scrollIntoView({ behavior: 'smooth' });
+
+  // Welke content vertalen?
+  var contentToTranslate;
+  if (isDualMode && currentPresetData.sceneData) {
+    contentToTranslate = currentPresetData.sceneData[activeScene].content;
+  } else {
+    contentToTranslate = currentPresetData.content;
+  }
+
+  var systemPrompt = 'Je krijgt een Anagram preset-document. Vertaal ALLE tekst naar ' + doelTaal + ', '
+    + 'maar BEHOUD ABSOLUUT de exacte structuur en de volgende markers letterlijk: '
+    + 'B_SNAAR_VEREIST, ARTIEST, SONG, ## TONE ANALYSE, ## SIGNAALCHAIN, ## BLOKKEN, ## FINE-TUNE TIPS, '
+    + 'SERIEEL, PARALLEL, CHAIN_A, CHAIN_B, MERGE_NAAR, INSTELLINGEN, UITLEG, ==SCENE_SPECTOR==, ==SCENE_PBASS==. '
+    + 'Bloknamen (zoals "Microtubes B3K") en parameter-namen blijven ook letterlijk. '
+    + 'Vertaal alleen de uitleg, tone analyse en fine-tune tips. '
+    + 'Geef ALLEEN het vertaalde document terug, geen extra uitleg.';
+
+  var msgs = [{ role: 'user', content: contentToTranslate }];
+
+  streamChat(
+    msgs,
+    systemPrompt,
+    function(partial) {
+      document.getElementById('outputContent').innerHTML = toHtml(partial, isDualMode ? activeScene : selectedBass);
+    },
+    function(fullText) {
+      var html = toHtml(fullText, isDualMode ? activeScene : selectedBass);
+      document.getElementById('outputContent').innerHTML = html;
+
+      if (isDualMode) {
+        sceneData[activeScene] = { content: fullText, html: html };
+        currentPresetData.sceneData = sceneData;
+      } else {
+        currentPresetData.content = fullText;
+      }
+
+      // Chat history bijwerken
+      if (chatHistory.length > 0) {
+        chatHistory[chatHistory.length - 1] = { role: 'assistant', content: fullText };
+      }
+
+      addMsg('assistant', t('vertaaldKlaar'));
+      btn.innerHTML = '<span>&#8635;</span> ' + t('vertaalKnop');
+      btn.disabled = false;
+    },
+    function(err) {
+      document.getElementById('outputContent').innerHTML = '<p style="color:var(--accent2)">' + t('fout') + err + '</p>';
+      btn.innerHTML = '<span>&#8635;</span> ' + t('vertaalKnop');
+      btn.disabled = false;
+    }
+  );
 }
 
 function loadPreset(id) {
