@@ -262,3 +262,46 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 .save-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .translate-btn { border-color: var(--accent2) !important; color: var(--accent2) !important; }
 .translate-btn:hover { background: rgba(255,77,109,0.08); }
+
+/* PWA INSTALL BANNER */
+.pwa-banner {
+  position: fixed; bottom: 1rem; left: 1rem; right: 1rem;
+  z-index: 200;
+  background: var(--bg2);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  animation: pwaSlideUp 0.35s ease;
+  max-width: 500px;
+  margin: 0 auto;
+}
+@keyframes pwaSlideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.pwa-banner-content { display: flex; align-items: center; gap: 0.875rem; flex-wrap: wrap; }
+.pwa-banner-icon {
+  width: 42px; height: 42px;
+  background: var(--accent); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-a); font-weight: 700; font-size: 0.8rem;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  flex-shrink: 0;
+}
+.pwa-banner-text { flex: 1; min-width: 150px; }
+.pwa-banner-title { font-family: var(--font-a); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; color: var(--accent); margin-bottom: 3px; }
+.pwa-banner-sub { font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.05em; }
+.pwa-banner-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.pwa-banner-btn {
+  padding: 0.5rem 0.85rem; border-radius: 3px;
+  font-family: var(--font-a); font-size: 0.62rem; letter-spacing: 0.15em;
+  font-weight: 700; cursor: pointer; border: 1px solid;
+  transition: all 0.2s;
+}
+.pwa-install { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.pwa-install:hover { background: #00ffcc; border-color: #00ffcc; }
+.pwa-dismiss { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.pwa-dismiss:hover { color: var(--text); border-color: var(--border-bright); }
+
+@media (max-width: 480px) {
+  .pwa-banner { padding: 0.75rem; }
+  .pwa-banner-actions { width: 100%; justify-content: flex-end; }
+}

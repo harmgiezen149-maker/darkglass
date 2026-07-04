@@ -7,6 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#00e5b0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Anagram" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
 </head>
 <body>
   <header>
@@ -116,8 +123,73 @@
   </main>
 
   <footer data-i18n="footer">DARKGLASS ANAGRAM TONE ARCHITECT &mdash; HARM'S SIGNAL CHAIN</footer>
+
+  <!-- PWA Install Banner -->
+  <div id="pwaBanner" class="pwa-banner hidden">
+    <div class="pwa-banner-content">
+      <div class="pwa-banner-icon">DG</div>
+      <div class="pwa-banner-text">
+        <div class="pwa-banner-title" data-i18n="pwaTitle">INSTALLEER ALS APP</div>
+        <div class="pwa-banner-sub" data-i18n="pwaSub">Voeg toe aan je startscherm voor snelle toegang</div>
+      </div>
+      <div class="pwa-banner-actions">
+        <button class="pwa-banner-btn pwa-install" id="pwaInstallBtn" onclick="pwaInstall()" data-i18n="pwaInstalleer">INSTALLEER</button>
+        <button class="pwa-banner-btn pwa-dismiss" onclick="pwaDismiss()" data-i18n="pwaLater">LATER</button>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
+
+  <!-- PWA Registratie -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js').catch(function(e) {
+          console.warn('SW registratie mislukt:', e);
+        });
+      });
+    }
+
+    // Install prompt vasthouden
+    var deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+
+      // Alleen tonen als niet al gedismisst
+      if (localStorage.getItem('pwa_dismissed') === '1') return;
+      if (window.matchMedia('(display-mode: standalone)').matches) return; // Al geinstalleerd
+      setTimeout(function() {
+        var banner = document.getElementById('pwaBanner');
+        if (banner) banner.classList.remove('hidden');
+      }, 1500);
+    });
+
+    function pwaInstall() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(choice) {
+        if (choice.outcome === 'accepted') {
+          document.getElementById('pwaBanner').classList.add('hidden');
+        }
+        deferredPrompt = null;
+      });
+    }
+
+    function pwaDismiss() {
+      localStorage.setItem('pwa_dismissed', '1');
+      document.getElementById('pwaBanner').classList.add('hidden');
+    }
+
+    // Als geinstalleerd, banner verbergen
+    window.addEventListener('appinstalled', function() {
+      var b = document.getElementById('pwaBanner');
+      if (b) b.classList.add('hidden');
+    });
+  </script>
+
 </body>
 </html>

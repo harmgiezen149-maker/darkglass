@@ -1,4 +1,9 @@
 {
-  "name": "darkglass",
-  "version": "1.0.0"
+  "name": "darkglass-anagram-tone-architect",
+  "version": "1.0.0",
+  "description": "AI-powered tone architect for the Darkglass Anagram",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  }
 }

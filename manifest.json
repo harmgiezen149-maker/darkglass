@@ -1,0 +1,26 @@
+{
+  "name": "Darkglass Anagram Tone Architect",
+  "short_name": "Anagram",
+  "description": "AI-powered tone architect for the Darkglass Anagram",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0b",
+  "theme_color": "#00e5b0",
+  "categories": ["music", "productivity"],
+  "lang": "nl",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
