@@ -1,114 +1,52 @@
+var http = require('./_lib/http');
+var auth = require('./_lib/auth');
+var limiet = require('./_lib/ratelimit');
+var claude = require('./_lib/claude');
+var sse = require('./_lib/sse');
+var ontwerp = require('./_lib/ontwerp');
+
+function kort(s, n) { return String(s || '').trim().slice(0, n); }
+
+function geldigeScene(s) {
+  return s && typeof s === 'object' && typeof s.bas_id === 'string' && Array.isArray(s.blokken) && JSON.stringify(s).length < 60000;
+}
+
+// POST { modus: 'chat', scene, vraag, geschiedenis, onderzoek, context, taal }
+// POST { modus: 'vertaal', scene, taal }
+// Antwoord als Server-Sent Events (zie api/analyse.js), met
+//   data: {"resultaat": {"scene": {...}, "antwoord": "..."}}
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!http.vereisMethode(req, res, ['POST'])) return;
+  if (!auth.vereisApp(req, res)) return;
+  var b = http.body(req);
+  var taal = b.taal === 'en' ? 'en' : 'nl';
+  if (b.modus !== 'chat' && b.modus !== 'vertaal') return http.stuur(res, 400, { error: 'Onbekende modus' });
+  if (!geldigeScene(b.scene)) return http.stuur(res, 400, { error: 'Geen geldige preset' });
+  if (b.modus === 'chat' && !kort(b.vraag, 10)) return http.stuur(res, 400, { error: 'Vraag ontbreekt' });
 
-  const { messages, system } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Invalid request: messages required' });
-  }
+  var rl = await limiet.claude(req, 'chat', auth.isAdmin(req));
+  if (!rl.ok) return http.stuur(res, 429, { error: rl.melding });
+  try { claude.client(); } catch (e) { return http.stuur(res, 500, { error: e.message }); }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
-
-  // Laad blokken dynamisch uit Redis
-  let blockPrompt = '';
+  var s = sse.start(res);
   try {
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (redisUrl && redisToken) {
-      const r = await fetch(redisUrl + '/get/' + encodeURIComponent('anagram:blocks'), {
-        headers: { Authorization: 'Bearer ' + redisToken }
+    var r;
+    if (b.modus === 'vertaal') {
+      s.zend({ fase: 'vertaal', tekst: 'Vertalen' });
+      r = await ontwerp.vertaal(b.scene, taal);
+    } else {
+      var onderzoek = b.onderzoek && typeof b.onderzoek === 'object' && JSON.stringify(b.onderzoek).length < 30000 ? b.onderzoek : null;
+      r = await ontwerp.chat({
+        scene: b.scene, vraag: kort(b.vraag, 1500), taal: taal, onderzoek: onderzoek, context: kort(b.context, 200),
+        geschiedenis: Array.isArray(b.geschiedenis) ? b.geschiedenis.map(String) : [],
+        onStatus: function(v) { if (v.tekst) s.zend({ fase: v.fase, tekst: v.tekst }); }
       });
-      const d = await r.json();
-      if (d.result) {
-        let blocks = d.result;
-        if (typeof blocks === 'string') blocks = JSON.parse(blocks);
-        if (typeof blocks === 'string') blocks = JSON.parse(blocks);
-        if (Array.isArray(blocks) && blocks.length > 0) {
-          blockPrompt = '\n\n=== BESCHIKBARE ANAGRAM BLOKKEN ===\n';
-          blocks.forEach(function(sectie) {
-            blockPrompt += '\n--- ' + sectie.sectie + ' ---\n';
-            (sectie.blokken || []).forEach(function(blok) {
-              blockPrompt += blok.naam + ' (' + blok.basis + ')\n';
-              blockPrompt += '  Parameters: ' + blok.parameters + '\n';
-            });
-          });
-          blockPrompt += '\nGebruik ALLEEN bovenstaande bloknamen en parameters. Geef GEEN parameters op die niet vermeld zijn.';
-        }
-      }
     }
-  } catch(e) {
-    console.error('Blokken laden mislukt:', e.message);
+    await claude.registreerKosten(b.modus, r.kosten);
+    s.zend({ resultaat: r });
+  } catch (e) {
+    console.error('Chat mislukt:', e);
+    s.zend({ fout: sse.foutMelding(e) });
   }
-
-  const finalSystem = (system || '') + blockPrompt;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        stream: true,
-        system: finalSystem,
-        messages: messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      return res.status(response.status).json({ error: err.error?.message || 'API error' });
-    }
-
-    // Stream door naar de client als Server-Sent Events
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // bewaar onvolledige regel
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-              res.write('data: ' + JSON.stringify({ text: parsed.delta.text }) + '\n\n');
-            }
-            if (parsed.type === 'message_stop') {
-              res.write('data: [DONE]\n\n');
-            }
-          } catch(e) {}
-        }
-      }
-    }
-
-    res.end();
-
-  } catch (err) {
-    console.error('API error:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    res.end();
-  }
+  s.einde();
 };

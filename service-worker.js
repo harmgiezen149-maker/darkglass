@@ -1,14 +1,25 @@
-// Service Worker voor Darkglass Anagram PWA
-var CACHE_NAAM = 'anagram-v1';
+// Service Worker voor Darkglass Anagram PWA.
+// Strategie: netwerk eerst (altijd de nieuwste versie na een deploy), cache
+// alleen als reserve wanneer je offline bent.
+var CACHE_NAAM = 'anagram-v5';
 var STATIC_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
-  '/script.js',
-  '/manifest.json'
+  '/auth-ui.js',
+  '/shared/catalogus.js',
+  '/shared/validatie.js',
+  '/shared/preset-render.js',
+  '/shared/legacy.js',
+  '/js/i18n.js',
+  '/js/util.js',
+  '/js/bibliotheek.js',
+  '/js/extra.js',
+  '/js/app.js',
+  '/manifest.json',
+  '/icon-192.png'
 ];
 
-// Installeer: cache statische bestanden
 self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAAM).then(function(cache) {
@@ -20,7 +31,6 @@ self.addEventListener('install', function(event) {
   self.skipWaiting();
 });
 
-// Activeer: oude caches opruimen
 self.addEventListener('activate', function(event) {
   event.waitUntil(
     caches.keys().then(function(namen) {
@@ -32,40 +42,22 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
-// Fetch: statische assets uit cache, API calls altijd via netwerk
 self.addEventListener('fetch', function(event) {
-  var url = event.request.url;
-
-  // API calls nooit cachen — altijd live
-  if (url.indexOf('/api/') !== -1) {
-    return;
-  }
-
-  // Alleen GET requests cachen
-  if (event.request.method !== 'GET') return;
+  var req = event.request;
+  if (req.method !== 'GET') return;
+  var url = new URL(req.url);
+  // API en externe bestanden nooit via de cache
+  if (url.origin !== self.location.origin || url.pathname.indexOf('/api/') === 0 || url.pathname.indexOf('/_vercel/') === 0) return;
 
   event.respondWith(
-    caches.match(event.request).then(function(cached) {
-      if (cached) {
-        // Update op de achtergrond
-        fetch(event.request).then(function(resp) {
-          if (resp && resp.status === 200) {
-            caches.open(CACHE_NAAM).then(function(cache) {
-              cache.put(event.request, resp);
-            });
-          }
-        }).catch(function() {});
-        return cached;
+    fetch(req).then(function(resp) {
+      if (resp && resp.status === 200 && resp.type === 'basic') {
+        var kopie = resp.clone();
+        caches.open(CACHE_NAAM).then(function(cache) { cache.put(req, kopie); });
       }
-      return fetch(event.request).then(function(resp) {
-        if (resp && resp.status === 200 && resp.type === 'basic') {
-          var respClone = resp.clone();
-          caches.open(CACHE_NAAM).then(function(cache) {
-            cache.put(event.request, respClone);
-          });
-        }
-        return resp;
-      });
+      return resp;
+    }).catch(function() {
+      return caches.match(req).then(function(c) { return c || caches.match('/index.html'); });
     })
   );
 });

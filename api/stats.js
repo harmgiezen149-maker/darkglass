@@ -1,104 +1,76 @@
+var http = require('./_lib/http');
+var auth = require('./_lib/auth');
+var redis = require('./_lib/redis');
+
+var EVENTS = ['analyse', 'save', 'visit', 'chat', 'vertaal', 'feedback'];
+
+function dagKey(d) {
+  return d.toISOString().slice(0, 10);
+}
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!http.vereisMethode(req, res, ['GET', 'POST'])) return;
+  if (!redis.isGeconfigureerd()) return http.stuur(res, 500, { error: 'Redis niet geconfigureerd' });
 
-  var url = process.env.UPSTASH_REDIS_REST_URL;
-  var token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return res.status(500).json({ error: 'Redis niet geconfigureerd' });
-
-  async function redisCmd(cmd) {
-    var r = await fetch(url + '/' + cmd.map(encodeURIComponent).join('/'), {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    return r.json();
-  }
-
-  function today() {
-    var d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
-
-  // POST — verhoog tellers
+  // POST — verhoog tellers (alleen bekende events, geen vrije sleutels)
   if (req.method === 'POST') {
-    var body = req.body || {};
-    if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
-    var event = body.event;
-    var meta = body.meta || {};
-
-    if (!event) return res.status(400).json({ error: 'Geen event' });
-
+    var b = http.body(req);
+    if (EVENTS.indexOf(b.event) === -1) return http.stuur(res, 400, { error: 'Onbekend event' });
+    var meta = b.meta && typeof b.meta === 'object' ? b.meta : {};
+    var bas = typeof meta.bass === 'string' ? meta.bass.replace(/[^a-z0-9_-]/gi, '').slice(0, 32) : '';
+    var cmds = [
+      ['INCR', 'stats:' + b.event + ':total'],
+      ['INCR', 'stats:' + b.event + ':day:' + dagKey(new Date())],
+      ['SET', 'stats:lastEvent', JSON.stringify({ event: b.event, meta: bas ? { bass: bas } : {}, ts: Date.now() })]
+    ];
+    if (bas) cmds.push(['INCR', 'stats:bass:' + bas]);
     try {
-      var datum = today();
-      // Totaal teller
-      await redisCmd(['INCR', 'stats:' + event + ':total']);
-      // Per dag
-      await redisCmd(['INCR', 'stats:' + event + ':day:' + datum]);
-      // Per meta (bijv. bas-keuze)
-      if (meta.bass) await redisCmd(['INCR', 'stats:bass:' + meta.bass]);
-      // Laatste activiteit
-      await redisCmd(['SET', 'stats:lastEvent', JSON.stringify({ event: event, meta: meta, ts: Date.now() })]);
-      return res.status(200).json({ ok: true });
-    } catch(e) {
-      return res.status(500).json({ error: e.message });
+      await redis.pipeline(cmds);
+      return http.stuur(res, 200, { ok: true });
+    } catch (e) {
+      return http.stuur(res, 500, { error: e.message });
     }
   }
 
-  // GET — haal stats op (wachtwoord verplicht)
-  if (req.method === 'GET') {
-    var pw = (req.query && req.query.pw) || '';
-    if (req.url && req.url.indexOf('pw=') !== -1) {
-      pw = req.url.split('pw=')[1].split('&')[0];
+  // GET — dashboard (beheer)
+  if (!auth.vereisAdmin(req, res)) return;
+  try {
+    var dagen = [];
+    for (var i = 29; i >= 0; i--) {
+      var d = new Date();
+      d.setUTCDate(d.getUTCDate() - i);
+      dagen.push(dagKey(d));
     }
-    var expectedPw = process.env.STATS_WACHTWOORD || 'darkglass';
-    if (pw !== expectedPw) return res.status(401).json({ error: 'Geen toegang' });
+    var vast = ['stats:analyse:total', 'stats:save:total', 'stats:visit:total',
+      'stats:bass:spector', 'stats:bass:pbass', 'stats:bass:beide', 'stats:lastEvent',
+      'stats:kosten:micro:total', 'stats:tokens:total', 'stats:zoekopdrachten:total',
+      'stats:kosten:micro:analyse', 'stats:kosten:micro:chat', 'stats:kosten:micro:vertaal', 'stats:kosten:micro:sync',
+      'stats:feedback:total'];
+    var keys = vast
+      .concat(dagen.map(function(k) { return 'stats:analyse:day:' + k; }))
+      .concat(dagen.map(function(k) { return 'stats:kosten:micro:day:' + k; }));
+    var w = await redis.cmd(['MGET'].concat(keys));
+    var n = function(i) { return parseInt(w[i] || '0', 10); };
+    var dollar = function(i) { return n(i) / 1e6; };
 
-    try {
-      // Totalen
-      var analysesTotal = await redisCmd(['GET', 'stats:analyse:total']);
-      var savesTotal = await redisCmd(['GET', 'stats:save:total']);
-      var visitsTotal = await redisCmd(['GET', 'stats:visit:total']);
-      var bassSpector = await redisCmd(['GET', 'stats:bass:spector']);
-      var bassPbass = await redisCmd(['GET', 'stats:bass:pbass']);
-      var bassBeide = await redisCmd(['GET', 'stats:bass:beide']);
-      var lastEvent = await redisCmd(['GET', 'stats:lastEvent']);
+    var laatst = null;
+    if (w[6]) { try { laatst = JSON.parse(w[6]); } catch (e) {} }
 
-      // Afgelopen 30 dagen analyses
-      var dagen = [];
-      for (var i = 29; i >= 0; i--) {
-        var d = new Date();
-        d.setDate(d.getDate() - i);
-        var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        var val = await redisCmd(['GET', 'stats:analyse:day:' + key]);
-        dagen.push({ datum: key, aantal: parseInt(val.result || '0', 10) });
-      }
-
-      // Laatste event parsen
-      var laatst = null;
-      if (lastEvent.result) {
-        try { laatst = JSON.parse(lastEvent.result); } catch(e) {}
-      }
-
-      return res.status(200).json({
-        ok: true,
-        totalen: {
-          analyses: parseInt(analysesTotal.result || '0', 10),
-          saves: parseInt(savesTotal.result || '0', 10),
-          visits: parseInt(visitsTotal.result || '0', 10)
-        },
-        bassen: {
-          spector: parseInt(bassSpector.result || '0', 10),
-          pbass: parseInt(bassPbass.result || '0', 10),
-          beide: parseInt(bassBeide.result || '0', 10)
-        },
-        dagen: dagen,
-        laatsteEvent: laatst
-      });
-    } catch(e) {
-      return res.status(500).json({ error: e.message });
-    }
+    return http.stuur(res, 200, {
+      ok: true,
+      totalen: { analyses: n(0), saves: n(1), visits: n(2), feedback: n(14) },
+      bassen: { spector: n(3), pbass: n(4), beide: n(5) },
+      kosten: {
+        totaal: dollar(7), tokens: n(8), zoekopdrachten: n(9),
+        perSoort: { analyse: dollar(10), chat: dollar(11), vertaal: dollar(12), sync: dollar(13) },
+        perAnalyse: n(0) ? dollar(10) / n(0) : 0
+      },
+      dagen: dagen.map(function(k, j) {
+        return { datum: k, aantal: n(vast.length + j), kosten: dollar(vast.length + dagen.length + j) };
+      }),
+      laatsteEvent: laatst
+    });
+  } catch (e) {
+    return http.stuur(res, 500, { error: e.message });
   }
-
-  return res.status(405).json({ error: 'Method not allowed' });
 };

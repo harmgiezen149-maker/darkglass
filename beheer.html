@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beheer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .tegels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.875rem; }
+    .tegel { display: flex; flex-direction: column; gap: 0.4rem; padding: 1.1rem 1.2rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg2); color: var(--text); text-decoration: none; transition: border-color 0.2s, background 0.2s; }
+    .tegel:hover { border-color: var(--accent); background: rgba(0,229,176,0.04); }
+    .tegel-kop { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .tegel-titel { font-family: var(--font-a); font-weight: 700; letter-spacing: 0.2em; font-size: 0.8rem; color: var(--accent); }
+    .tegel-icoon { font-size: 1.1rem; color: var(--accent3); }
+    .tegel-tekst { font-size: 0.72rem; color: var(--text-dim); line-height: 1.5; }
+    .tegel-info { font-size: 0.66rem; color: var(--text-dimmer); }
+    .update-badge { font-family: var(--font-a); font-size: 0.55rem; letter-spacing: 0.15em; color: var(--bg); background: #ffb347; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 700; }
+    .sessie { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .sessie-tekst { font-size: 0.75rem; color: var(--text-dim); line-height: 1.6; }
+    .sessie-tekst strong { color: var(--text); }
+    .header-link { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); text-decoration: none; border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 4px; }
+    .header-link:hover { color: var(--accent); border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-group"><div class="logo-mark">DG</div><div class="logo-text"><span class="logo-title">ANAGRAM</span><span class="logo-sub">BEHEER</span></div></div>
+    <a href="/" class="header-link">&larr; APP</a>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="panel-label">SESSIE</div>
+      <div class="sessie">
+        <div class="sessie-tekst" id="sessieTekst">Status laden...</div>
+        <div class="acties-rij">
+          <button class="actie-btn actie-primair" id="btnLogin" style="display:none" onclick="login()">INLOGGEN ALS BEHEERDER</button>
+          <button class="actie-btn" id="btnLogout" style="display:none" onclick="logout()">UITLOGGEN</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="tegels">
+      <a class="tegel" href="/blocks.html" id="tegelBlokken">
+        <div class="tegel-kop"><span class="tegel-titel">BLOKKEN</span><span class="update-badge" id="updateBadge" style="display:none">UPDATE</span><span class="tegel-icoon">&#9638;</span></div>
+        <div class="tegel-tekst">Blokken en parameters beheren, en synchroniseren met de Darkglass-handleiding en de release notes.</div>
+        <div class="tegel-info" id="infoBlokken"></div>
+      </a>
+      <a class="tegel" href="/rig.html">
+        <div class="tegel-kop"><span class="tegel-titel">MIJN RIG</span><span class="tegel-icoon">&#9835;</span></div>
+        <div class="tegel-tekst">Bassen, pickups, stemming, uitgang en speelstijl. Gaat mee in elke analyse.</div>
+        <div class="tegel-info" id="infoRig"></div>
+      </a>
+      <a class="tegel" href="/setlists.html">
+        <div class="tegel-kop"><span class="tegel-titel">SETLISTS</span><span class="tegel-icoon">&#9776;</span></div>
+        <div class="tegel-tekst">Presets ordenen per repetitie of optreden, en een oefenblad printen.</div>
+        <div class="tegel-info" id="infoSetlists"></div>
+      </a>
+      <a class="tegel" href="/stats.html">
+        <div class="tegel-kop"><span class="tegel-titel">STATS &amp; KOSTEN</span><span class="tegel-icoon">&#9650;</span></div>
+        <div class="tegel-tekst">Gebruik van de app en geschatte API-kosten per analyse.</div>
+        <div class="tegel-info">Alleen voor beheerders</div>
+      </a>
+    </div>
+  </main>
+  <footer>DARKGLASS ANAGRAM &mdash; BEHEER</footer>
+
+  <script src="auth-ui.js"></script>
+  <script>
+    function zetTekst(id, t) { var el = document.getElementById(id); if (el) el.textContent = t; }
+
+    function laadStatus() {
+      return fetch('/api/login', { credentials: 'same-origin' }).then(function(r) { return r.json(); }).then(function(s) {
+        var regels = [];
+        if (!s.beheerActief) regels.push('<strong>Beheer is uitgeschakeld.</strong> Stel ADMIN_WACHTWOORD in op Vercel om blokken, rig en stats te kunnen wijzigen.');
+        else if (s.admin) regels.push('<strong>Ingelogd als beheerder.</strong>');
+        else regels.push('<strong>Niet ingelogd als beheerder.</strong> Bekijken kan, wijzigen vraagt om het beheerderswachtwoord.');
+        regels.push(s.appWachtwoordActief ? 'De app is afgeschermd met een wachtwoord (APP_WACHTWOORD).' : 'De app is open voor iedereen met de link. Overweeg APP_WACHTWOORD in te stellen.');
+        document.getElementById('sessieTekst').innerHTML = regels.join('<br>');
+        document.getElementById('btnLogin').style.display = s.beheerActief && !s.admin ? '' : 'none';
+        document.getElementById('btnLogout').style.display = s.admin || (s.appWachtwoordActief && s.app) ? '' : 'none';
+        return s;
+      });
+    }
+
+    function login() { loginVenster('admin').then(function(ok) { if (ok) laadAlles(); }); }
+    function logout() {
+      fetch('/api/login', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' }).then(laadAlles);
+    }
+
+    function laadAlles() {
+      laadStatus().then(function(s) {
+        // Alleen voor beheerders: is er een update van de blokken? (gewone fetch, geen loginvenster)
+        if (!s.admin) { document.getElementById('updateBadge').style.display = 'none'; return; }
+        fetch('/api/blocks-sync', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+          document.getElementById('updateBadge').style.display = d && d.updateBeschikbaar ? '' : 'none';
+        }).catch(function() {});
+      }).catch(function() { zetTekst('sessieTekst', 'Status niet beschikbaar.'); });
+
+      fetch('/api/blocks').then(function(r) { return r.json(); }).then(function(d) {
+        var n = (d.blocks || []).reduce(function(a, s) { return a + (s.blokken || []).length; }, 0);
+        zetTekst('infoBlokken', n + ' blokken · KosmOS ' + ((d.meta && d.meta.kosmos) || '?'));
+      }).catch(function() {});
+      fetch('/api/rig').then(function(r) { return r.json(); }).then(function(d) {
+        zetTekst('infoRig', d.rig.bassen.map(function(b) { return b.naam; }).join(' · '));
+      }).catch(function() {});
+      fetch('/api/setlists', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+        if (d) zetTekst('infoSetlists', Object.keys(d.setlists || {}).length + ' setlists');
+      }).catch(function() {});
+    }
+
+    laadAlles();
+  </script>
+</body>
+</html>

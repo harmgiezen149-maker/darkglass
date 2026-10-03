@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+// UI-rooktest met Playwright tegen de lokale dev-server (nep-Claude, geheugen-Redis).
+//   NODE_PATH=$(npm root -g) node scripts/ui-smoke.js
+// Faalt met exit code 1 bij een JS-fout in de pagina of een mislukte stap.
+
+process.env.ADMIN_WACHTWOORD = process.env.ADMIN_WACHTWOORD || 'beheer-test';
+process.env.DG_FAKE_CLAUDE = '1';
+var server = require('./dev-server');
+var { chromium } = require('playwright');
+
+var POORT = server.address() ? server.address().port : 3000;
+var BASIS = 'http://localhost:' + POORT;
+var stappen = [];
+
+function stap(naam, ok, detail) {
+  stappen.push({ naam: naam, ok: !!ok, detail: detail });
+  console.log((ok ? '✓ ' : '✗ ') + naam + (detail && !ok ? ' — ' + detail : ''));
+}
+
+async function main() {
+  await new Promise(function(r) { if (server.listening) r(); else server.on('listening', r); });
+  BASIS = 'http://localhost:' + server.address().port;
+  var browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
+  var page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+  var fouten = [];
+  page.on('pageerror', function(e) { fouten.push(e.message); });
+  page.on('dialog', function(d) { d.accept(d.type() === 'prompt' ? 'test' : undefined); });
+
+  var scenarios = require('./ui-scenarios');
+  for (var s of scenarios) {
+    try { await s(page, BASIS, stap); }
+    catch (e) { stap('scenario ' + (s.name || '?'), false, e.message); }
+  }
+
+  stap('geen JS-fouten in de pagina', fouten.length === 0, fouten.join(' | '));
+  await browser.close();
+  server.close();
+  var mislukt = stappen.filter(function(x) { return !x.ok; });
+  console.log('\n' + (stappen.length - mislukt.length) + '/' + stappen.length + ' stappen geslaagd');
+  process.exit(mislukt.length ? 1 : 0);
+}
+
+main().catch(function(e) { console.error(e); process.exit(1); });

@@ -35,6 +35,11 @@
       </div>
     </div>
   </header>
+  <nav class="top-nav">
+    <a class="nav-knop" href="/blocks.html" id="navBlokken"><span class="nav-icoon">&#9638;</span> <span data-i18n="navBlokken">BLOKKEN</span><span class="nav-badge" id="navUpdate" hidden>UPDATE</span></a>
+    <a class="nav-knop nav-knop-beheer" href="/beheer.html"><span class="nav-icoon">&#9881;</span> <span data-i18n="navBeheer">BEHEER</span></a>
+    <a class="nav-knop" href="/setlists.html"><span class="nav-icoon">&#9776;</span> SETLISTS</a>
+  </nav>
 
   <main>
 
@@ -43,20 +48,7 @@
 
       <div class="field-group">
         <label class="field-label" data-i18n="bassSelectie">BASS SELECTIE</label>
-        <div class="bass-selector bass-selector-3">
-          <button class="bass-btn active" data-bass="spector">
-            <span class="bass-name">SPECTOR NS ETHOS 5</span>
-            <span class="bass-detail" data-i18n="spectorDetail">Actief &middot; 5-snarig &middot; EMG-Hz P/HH</span>
-          </button>
-          <button class="bass-btn" data-bass="pbass">
-            <span class="bass-name">FENDER PRECISION BASS</span>
-            <span class="bass-detail" data-i18n="pbassDetail">Actief &middot; 4-snarig &middot; Split-P EMG-Hz</span>
-          </button>
-          <button class="bass-btn bass-btn-dual" data-bass="beide">
-            <span class="bass-name" data-i18n="beideBassen">BEIDE BASSEN</span>
-            <span class="bass-detail" data-i18n="beideDetail">2 scenes &middot; Spector + P-Bass</span>
-          </button>
-        </div>
+        <div class="bass-selector" id="bassSelector"></div>
       </div>
 
       <div class="field-group">
@@ -77,6 +69,8 @@
         <textarea id="extraInput" class="text-input text-area" rows="3" data-i18n-placeholder="extraPh" placeholder="bijv: meer distortion dan het origineel, parallelle processing nodig..."></textarea>
       </div>
 
+      <label class="check-label"><input type="checkbox" id="versOnderzoek" /> <span data-i18n="versOnderzoek">Opnieuw onderzoeken (cache negeren)</span></label>
+
       <button class="analyze-btn" id="analyzeBtn" onclick="analyzeTone()">
         <span id="btnText" data-i18n="analyseerTone">ANALYSEER TONE</span>
         <span>&#8594;</span>
@@ -86,14 +80,7 @@
     <section class="panel hidden" id="outputPanel">
       <div class="panel-label" data-i18n="panel02">02 / ANAGRAM PRESET</div>
       <div class="output-meta" id="outputMeta"></div>
-      <div class="scene-tabs hidden" id="sceneTabs">
-        <button class="scene-tab active" id="tabSpector" onclick="switchScene('spector')" data-i18n="scene1">
-          SCENE 1 &mdash; SPECTOR NS ETHOS 5
-        </button>
-        <button class="scene-tab" id="tabPbass" onclick="switchScene('pbass')" data-i18n="scene2">
-          SCENE 2 &mdash; FENDER P-BASS
-        </button>
-      </div>
+      <div class="scene-tabs hidden" id="sceneTabs"></div>
       <div class="output-content" id="outputContent"></div>
     </section>
 
@@ -113,11 +100,23 @@
           <span>&#8635;</span> <span data-i18n="vertaalKnop">VERTAAL</span>
         </button>
       </div>
+      <div id="presetActies" class="preset-acties"></div>
     </section>
 
     <section class="panel hidden" id="savedPanel">
-      <div class="panel-label" data-i18n="panel04">04 / OPGESLAGEN PRESETS</div>
+      <div class="panel-label"><span data-i18n="panel04">04 / OPGESLAGEN PRESETS</span> <span class="saved-teller" id="savedTeller"></span></div>
+      <div class="bieb-filters">
+        <input type="search" id="filterZoek" class="text-input" data-i18n-placeholder="zoekPh" placeholder="Zoek op artiest, song, tag of genre..." />
+        <select id="filterBas" class="text-input"></select>
+        <select id="filterBeoordeling" class="text-input"></select>
+        <select id="filterTag" class="text-input"></select>
+      </div>
       <div class="saved-list" id="savedList"></div>
+      <div class="acties-rij bieb-acties">
+        <button class="actie-btn" onclick="exporteerAlles()" data-i18n="exporteerAlles">EXPORT ALLES</button>
+        <label class="actie-btn" for="importInput" data-i18n="importeer">IMPORT</label>
+        <input type="file" id="importInput" accept="application/json,.json" style="display:none" onchange="importeer(this)" />
+      </div>
     </section>
 
   </main>
@@ -139,7 +138,16 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="auth-ui.js"></script>
+  <script src="shared/catalogus.js"></script>
+  <script src="shared/validatie.js"></script>
+  <script src="shared/preset-render.js"></script>
+  <script src="shared/legacy.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/bibliotheek.js"></script>
+  <script src="js/extra.js"></script>
+  <script src="js/app.js"></script>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>
 

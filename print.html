@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oefenblad</title>
+  <style>
+    :root { --ink: #111; --dim: #555; --lijn: #ccc; --accent: #008f6b; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #fff; color: var(--ink); font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.45; padding: 16px; }
+    .werkbalk { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .werkbalk button { padding: 8px 14px; border: 1px solid #333; background: #111; color: #fff; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .werkbalk span { color: var(--dim); }
+    .setlist-kop { margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+    .setlist-kop h1 { font-size: 20px; }
+    .setlist-kop ol { margin: 8px 0 0 20px; }
+    .song { page-break-after: always; break-after: page; max-width: 800px; margin: 0 auto 32px; }
+    .song:last-child { page-break-after: auto; break-after: auto; }
+    .song h2 { font-size: 18px; border-bottom: 2px solid var(--ink); padding-bottom: 4px; }
+    .scene { margin-top: 12px; }
+    .scene h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 4px; }
+    .meta { color: var(--dim); margin-bottom: 6px; }
+    .keten { font-weight: 600; margin: 6px 0 10px; }
+    .blokken { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .blok { border: 1px solid var(--lijn); border-radius: 4px; padding: 6px 8px; break-inside: avoid; }
+    .blok b { display: block; margin-bottom: 3px; }
+    .blok table { width: 100%; border-collapse: collapse; }
+    .blok td { padding: 1px 0; vertical-align: top; }
+    .blok td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .delen, .tips { margin-top: 8px; }
+    .delen li, .tips li { margin-left: 18px; }
+    .notities { margin-top: 10px; border-top: 1px dashed var(--lijn); padding-top: 6px; color: var(--dim); min-height: 60px; }
+    @media print { .werkbalk { display: none; } body { padding: 0; } @page { margin: 12mm; } }
+  </style>
+</head>
+<body>
+  <div class="werkbalk"><button onclick="window.print()">PRINT / PDF</button><span id="status">Laden...</span></div>
+  <div id="inhoud"></div>
+  <script src="auth-ui.js"></script>
+  <script src="shared/legacy.js"></script>
+  <script>
+    var q = new URLSearchParams(location.search);
+    var bassen = {};
+
+    function scenesVan(p) { return Legacy.scenesUitPreset(p); }
+
+    function sceneHtml(s) {
+      var b = bassen[s.bas_id];
+      var keten = s.routing === 'parallel'
+        ? 'A: ' + (s.chain_a || []).join(' → ') + ' | B: ' + (s.chain_b || []).join(' → ') + ((s.merge_naar || []).length ? ' ⇒ ' + s.merge_naar.join(' → ') : '')
+        : (s.chain_a || []).join(' → ');
+      return '<div class="scene"><h3>' + esc(b ? b.naam : s.bas_id) + '</h3>'
+        + '<div class="meta">' + (s.stemming ? 'Stemming: <b>' + esc(s.stemming) + '</b>' : '') + (s.b_snaar_vereist ? ' · lage B nodig' : '') + '</div>'
+        + '<div class="keten">' + esc(keten) + '</div>'
+        + '<div class="blokken">' + (s.blokken || []).map(function(bl, i) {
+          return '<div class="blok"><b>' + (i + 1) + '. ' + esc(bl.label || bl.blok) + '</b><table>'
+            + (bl.instellingen || []).map(function(ins) { return '<tr><td>' + esc(ins.parameter) + '</td><td>' + esc(ins.waarde) + '</td></tr>'; }).join('')
+            + '</table></div>';
+        }).join('') + '</div>'
+        + ((s.songdelen || []).length ? '<ul class="delen">' + s.songdelen.map(function(d) {
+          return '<li><b>' + esc(d.deel) + (d.footswitch ? ' (' + esc(d.footswitch) + ')' : '') + ':</b> ' + esc((d.wijzigingen || []).map(function(w) {
+            return w.actie === 'wijzig' ? w.label + ' ' + w.parameter + ' ' + w.waarde : w.label + ' ' + (w.actie === 'aan' ? 'ON' : 'OFF');
+          }).join(', ')) + '</li>';
+        }).join('') + '</ul>' : '')
+        + ((s.tips || []).length ? '<ul class="tips">' + s.tips.map(function(t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '')
+        + '</div>';
+    }
+
+    function songHtml(p, nr) {
+      return '<section class="song"><h2>' + (nr ? nr + '. ' : '') + esc(p.artist) + ' — ' + esc(p.song) + (p.label ? ' <small>(' + esc(p.label) + ')</small>' : '') + '</h2>'
+        + scenesVan(p).map(sceneHtml).join('') + '<div class="notities">Notities:</div></section>';
+    }
+
+    function toon(presets, kop) {
+      document.getElementById('inhoud').innerHTML = (kop || '') + presets.map(function(p, i) { return songHtml(p, kop ? i + 1 : 0); }).join('');
+      document.getElementById('status').textContent = presets.length + ' song' + (presets.length === 1 ? '' : 's');
+    }
+
+    apiJson('/api/rig').then(function(d) { d.rig.bassen.forEach(function(b) { bassen[b.id] = b; }); }).catch(function() {}).then(function() {
+      if (q.get('huidig')) {
+        var p = null;
+        try { p = JSON.parse(sessionStorage.getItem('dg_oefenblad')); } catch (e) {}
+        if (!p) throw new Error('Geen preset gevonden');
+        return toon([p]);
+      }
+      return apiJson('/api/presets').then(function(d) {
+        var alle = d.presets || {};
+        if (q.get('preset')) {
+          if (!alle[q.get('preset')]) throw new Error('Preset niet gevonden');
+          return toon([alle[q.get('preset')]]);
+        }
+        return apiJson('/api/setlists').then(function(s) {
+          var sl = (s.setlists || {})[q.get('setlist')];
+          if (!sl) throw new Error('Setlist niet gevonden');
+          var lijst = sl.items.map(function(id) { return alle[id]; }).filter(Boolean);
+          document.title = sl.naam;
+          toon(lijst, '<div class="setlist-kop"><h1>' + esc(sl.naam) + '</h1>' + (sl.notitie ? '<p>' + esc(sl.notitie) + '</p>' : '')
+            + '<ol>' + lijst.map(function(p) { return '<li>' + esc(p.artist) + ' — ' + esc(p.song) + '</li>'; }).join('') + '</ol></div>');
+        });
+      });
+    }).catch(function(e) { document.getElementById('status').textContent = 'Fout: ' + e.message; });
+  </script>
+</body>
+</html>

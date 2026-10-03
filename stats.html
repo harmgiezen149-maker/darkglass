@@ -79,7 +79,7 @@
       <div class="logo-sub">USAGE STATS</div>
     </div>
   </div>
-  <a href="/" class="header-link">← APP</a>
+  <div style="display:flex;gap:0.5rem;align-items:center"><a href="/beheer.html" class="header-link">&#9881; BEHEER</a><a href="/" class="header-link">← APP</a></div>
 </header>
 
 <main>
@@ -113,6 +113,16 @@
     </div>
 
     <div class="panel">
+      <div class="panel-label">API-KOSTEN (SCHATTING)</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">TOTAAL</div><div class="num" id="kostTotaal">$0</div><div class="sub" id="kostTokens">0 tokens</div></div>
+        <div class="stat-card"><div class="label">PER ANALYSE</div><div class="num" id="kostPerAnalyse">$0</div><div class="sub">gemiddeld, incl. onderzoek</div></div>
+        <div class="stat-card"><div class="label">LAATSTE 30 DAGEN</div><div class="num" id="kost30">$0</div><div class="sub" id="kostZoek">0 zoekopdrachten totaal</div></div>
+      </div>
+      <div class="bass-bars" id="kostSoorten" style="margin-top:1rem"></div>
+    </div>
+
+    <div class="panel">
       <div class="panel-label">BAS KEUZE VERDELING</div>
       <div class="bass-bars" id="bassBars"></div>
     </div>
@@ -134,29 +144,36 @@
 
 <footer>ANAGRAM TONE ARCHITECT — USAGE STATS</footer>
 
+<script src="auth-ui.js"></script>
 <script>
 function doLogin() {
   var pw = document.getElementById('pwInput').value;
   if (!pw) return;
-  laadStats(pw);
+  fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol: 'admin', wachtwoord: pw }) })
+  .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Inloggen mislukt'); }); })
+  .then(laadStats)
+  .catch(toonFout);
 }
 
-function laadStats(pw) {
-  fetch('/api/stats?pw=' + encodeURIComponent(pw))
+function toonFout(e) {
+  var err = document.getElementById('loginErr');
+  err.textContent = 'Fout: ' + e.message;
+  err.classList.remove('hidden');
+}
+
+// Haalt stats op met de beheerderssessie (cookie); zonder sessie blijft het loginvenster staan.
+function laadStats(stil) {
+  fetch('/api/stats', { credentials: 'same-origin' })
   .then(function(r) {
-    if (r.status === 401) throw new Error('Verkeerd wachtwoord');
+    if (r.status === 401) { if (stil === true) return null; throw new Error('Verkeerd wachtwoord'); }
     return r.json();
   })
   .then(function(d) {
+    if (!d) return;
     if (d.error) throw new Error(d.error);
-    sessionStorage.setItem('stats_pw', pw);
     toonDashboard(d);
   })
-  .catch(function(e) {
-    var err = document.getElementById('loginErr');
-    err.textContent = 'Fout: ' + e.message;
-    err.classList.remove('hidden');
-  });
+  .catch(toonFout);
 }
 
 function toonDashboard(d) {
@@ -166,6 +183,21 @@ function toonDashboard(d) {
   document.getElementById('numAnalyses').textContent = d.totalen.analyses;
   document.getElementById('numSaves').textContent = d.totalen.saves;
   document.getElementById('numVisits').textContent = d.totalen.visits;
+
+  // Kosten
+  var k = d.kosten || { totaal: 0, tokens: 0, zoekopdrachten: 0, perSoort: {}, perAnalyse: 0 };
+  var geld = function(x) { return '$' + (x || 0).toFixed(x >= 10 ? 0 : 2); };
+  document.getElementById('kostTotaal').textContent = geld(k.totaal);
+  document.getElementById('kostTokens').textContent = (k.tokens || 0).toLocaleString('nl-NL') + ' tokens';
+  document.getElementById('kostPerAnalyse').textContent = geld(k.perAnalyse);
+  document.getElementById('kost30').textContent = geld(d.dagen.reduce(function(a, x) { return a + (x.kosten || 0); }, 0));
+  document.getElementById('kostZoek').textContent = (k.zoekopdrachten || 0) + ' zoekopdrachten totaal';
+  var soorten = { analyse: 'ANALYSES', chat: 'FINE-TUNE', vertaal: 'VERTALEN', sync: 'BLOK-SYNC' };
+  var maxK = Math.max.apply(null, Object.keys(soorten).map(function(s) { return (k.perSoort || {})[s] || 0; })) || 1;
+  document.getElementById('kostSoorten').innerHTML = Object.keys(soorten).map(function(s) {
+    var v = (k.perSoort || {})[s] || 0;
+    return '<div class="bass-bar-row"><div class="bass-bar-label">' + soorten[s] + '</div><div class="bass-bar-track"><div class="bass-bar-fill spector" style="width:' + (v / maxK * 100).toFixed(1) + '%"></div></div><div class="bass-bar-num">' + geld(v) + '</div></div>';
+  }).join('');
 
   // Bas bars
   var totalBass = d.bassen.spector + d.bassen.pbass + d.bassen.beide;
@@ -201,13 +233,12 @@ function toonDashboard(d) {
     var datum = new Date(d.laatsteEvent.ts);
     var dStr = datum.toLocaleString('nl-NL');
     var metaStr = d.laatsteEvent.meta && d.laatsteEvent.meta.bass ? ' · bas: ' + d.laatsteEvent.meta.bass : '';
-    document.getElementById('lastEvent').innerHTML = '<strong>' + d.laatsteEvent.event.toUpperCase() + '</strong> · ' + dStr + metaStr;
+    document.getElementById('lastEvent').innerHTML = '<strong>' + esc(String(d.laatsteEvent.event).toUpperCase()) + '</strong> · ' + esc(dStr + metaStr);
   }
 }
 
-// Auto-login als wachtwoord nog in session zit
-var savedPw = sessionStorage.getItem('stats_pw');
-if (savedPw) laadStats(savedPw);
+// Direct proberen: werkt als er al een beheerderssessie is
+laadStats(true);
 </script>
 
 </body>
