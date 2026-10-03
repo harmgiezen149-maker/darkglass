@@ -6,6 +6,7 @@ var claude = require('./claude');
 var blokken = require('./blokken');
 var rigLib = require('./rig');
 var onderzoekLib = require('./onderzoek');
+var leren = require('./leren');
 var Catalogus = require('../../shared/catalogus');
 var Validatie = require('../../shared/validatie');
 
@@ -17,7 +18,7 @@ function sceneSchema(bloknamen, basIds) {
   var lijst = { type: 'array', items: str };
   return {
     type: 'object', additionalProperties: false,
-    required: ['bas_id', 'b_snaar_vereist', 'stemming', 'toneanalyse', 'routing', 'chain_a', 'chain_b', 'merge_naar', 'blokken', 'tips'],
+    required: ['bas_id', 'b_snaar_vereist', 'stemming', 'toneanalyse', 'routing', 'chain_a', 'chain_b', 'merge_naar', 'blokken', 'tips', 'songdelen', 'nam_suggestie'],
     properties: {
       bas_id: { type: 'string', enum: basIds },
       b_snaar_vereist: { type: 'boolean' },
@@ -47,7 +48,41 @@ function sceneSchema(bloknamen, basIds) {
           }
         }
       },
-      tips: lijst
+      tips: lijst,
+      songdelen: {
+        type: 'array',
+        description: 'Alleen als de bassound per songdeel duidelijk verandert; anders leeg',
+        items: {
+          type: 'object', additionalProperties: false, required: ['deel', 'omschrijving', 'footswitch', 'wijzigingen'],
+          properties: {
+            deel: { type: 'string', description: 'Bv. "Couplet", "Refrein", "Solo"' },
+            omschrijving: str,
+            footswitch: { type: 'string', description: 'Welke footswitch dit schakelt, bv. "FS2", of leeg voor de basisstand' },
+            wijzigingen: {
+              type: 'array',
+              items: {
+                type: 'object', additionalProperties: false, required: ['label', 'actie', 'parameter', 'waarde'],
+                properties: {
+                  label: { type: 'string', description: 'Label van een blok uit deze preset' },
+                  actie: { type: 'string', enum: ['aan', 'uit', 'wijzig'] },
+                  parameter: { type: 'string', description: 'Bij "wijzig": de parameter, anders leeg' },
+                  waarde: { type: 'string', description: 'Bij "wijzig": de nieuwe waarde, anders leeg' }
+                }
+              }
+            }
+          }
+        }
+      },
+      nam_suggestie: {
+        anyOf: [{ type: 'null' }, {
+          type: 'object', additionalProperties: false, required: ['versterker', 'zoekterm', 'waarom'],
+          properties: {
+            versterker: { type: 'string', description: 'Het echte apparaat waarvan je een NAM-capture zou laden' },
+            zoekterm: { type: 'string', description: 'Zoekterm voor TONE3000, bv. "Ampeg SVT bass"' },
+            waarom: str
+          }
+        }]
+      }
     }
   };
 }
@@ -88,7 +123,11 @@ function systeem(catalogus, meta, rig, taal, extraVariabel) {
     + '- Baseer je op het toneprofiel. Is iets daarin onzeker, kies dan een muzikaal logische instelling en zeg in de toneanalyse wat een inschatting is.\n'
     + '- Houd rekening met de bas: aantal snaren, pickups en actieve elektronica. b_snaar_vereist is true als de baspartij onder de lage E gaat.\n'
     + '- stemming: alleen de basstemming (bv. Drop D), niet die van de gitaar.\n'
-    + '- tips: drie concrete tips voor het fine-tunen op de bas en de Anagram.\n\n'
+    + '- tips: drie concrete tips voor het fine-tunen op de bas en de Anagram.\n'
+    + '- songdelen: alleen als de bassound per songdeel duidelijk verandert (bv. clean couplet, vervormd refrein). Geef per deel welke blokken een footswitch aan/uit zet of welke waarde verandert, met niveaucompensatie zodat het volume gelijk blijft. Anders een lege lijst.\n'
+    + (heeftNeural(catalogus)
+      ? '- nam_suggestie: als een NAM-capture van de echte versterker of het pedaal van de opname de sound dichter benadert, noem dat apparaat en een zoekterm voor TONE3000 (te laden in het Neural-blok). Anders null.\n\n'
+      : '- nam_suggestie: altijd null (deze catalogus heeft geen Neural-blok).\n\n')
     + '=== CATALOGUS ===\n' + Catalogus.promptTekst(catalogus);
   var variabel = (TAAL[taal] || TAAL.nl);
   var r = rigLib.beschrijfRig(rig);
@@ -98,6 +137,10 @@ function systeem(catalogus, meta, rig, taal, extraVariabel) {
     { type: 'text', text: vast, cache_control: { type: 'ephemeral' } },
     { type: 'text', text: variabel }
   ];
+}
+
+function heeftNeural(catalogus) {
+  return Catalogus.alleBlokken(catalogus).some(function(x) { return /neural/i.test(x.blok.naam); });
 }
 
 function bloknamen(catalogus) {
@@ -202,7 +245,10 @@ async function analyse(opts) {
 
   // B. ontwerp
   status({ fase: 'ontwerp', tekst: 'Preset ontwerpen' });
-  var system = systeem(catalogus, meta, rig, opts.taal, opts.voorbeelden);
+  var voorbeelden = '';
+  try { voorbeelden = await leren.voorbeeldenVoorPrompt({ artiest: opts.artist, genre: profiel && profiel.genre, bassen: bassen.map(function(b) { return b.id; }) }); } catch (e) { console.error('Leren mislukt:', e.message); }
+  if (voorbeelden) status({ fase: 'ontwerp', tekst: 'Eerdere feedback en goedgekeurde presets meegenomen' });
+  var system = systeem(catalogus, meta, rig, opts.taal, voorbeelden);
   var vraag = 'Toneprofiel van "' + opts.song + '" van ' + opts.artist + ':\n' + onderzoekLib.voorPrompt(profiel) + '\n\n'
     + 'Maak een preset (scene) voor ' + (bassen.length > 1 ? 'elk van deze bassen, met waar het kan dezelfde blokstructuur en per bas aangepaste instellingen' : 'deze bas') + ':\n'
     + bassen.map(function(b) { return '- bas_id "' + b.id + '": ' + rigLib.beschrijf(b); }).join('\n')
@@ -248,7 +294,9 @@ async function chat(opts) {
   var bas = rig.bassen.find(function(b) { return b.id === opts.scene.bas_id; }) || rig.bassen[0];
   var scene = Object.assign({}, opts.scene, { bas_id: bas.id });
   delete scene.controle;
-  var system = systeem(catalogus, meta, rig, opts.taal, opts.voorbeelden);
+  var lessen = '';
+  try { lessen = await leren.voorbeeldenVoorPrompt({ alleenLessen: true }); } catch (e) {}
+  var system = systeem(catalogus, meta, rig, opts.taal, lessen);
   var eerder = (opts.geschiedenis || []).slice(-6).map(function(v) { return '- ' + String(v).slice(0, 400); });
   var tekst = 'De speler verfijnt een bestaande preset' + (opts.context ? ' voor ' + opts.context : '') + ' op de ' + rigLib.beschrijf(bas) + '.\n\n'
     + (opts.onderzoek ? 'Toneprofiel:\n' + onderzoekLib.voorPrompt(opts.onderzoek) + '\n\n' : '')

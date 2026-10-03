@@ -30,7 +30,6 @@ module.exports = async function handler(req, res) {
       artist: artist, song: song,
       bassen: Array.isArray(b.bassen) ? b.bassen.slice(0, 3).map(String) : [],
       extra: kort(b.extra, 1500), taal: b.taal === 'en' ? 'en' : 'nl', vers: b.vers === true,
-      voorbeelden: await require('./_lib/leren').voorbeeldenVoorPrompt(artist, b.taal).catch(function() { return ''; }),
       onStatus: function(v) {
         if (v.onderzoek) s.zend({ onderzoek: v.onderzoek });
         if (v.tekst) s.zend({ fase: v.fase, tekst: v.tekst });

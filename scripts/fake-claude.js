@@ -154,7 +154,12 @@ function nepScene(basId, fout) {
       { label: 'Jim Bass', blok: 'Jim Bass', origineel: 'Ampeg SVT', instellingen: [{ parameter: 'Gain', waarde: '45%' }, { parameter: 'Bright', waarde: 'Off' }], uitleg: 'Ampeg-basis.' },
       { label: 'Gain', blok: 'Gain', origineel: 'volume', instellingen: [{ parameter: 'Level', waarde: '100%' }], uitleg: 'Volumeregelaar.' }
     ],
-    tips: ['Stem naar Drop D.', 'Speel met plectrum.', 'Draai de mid-boost terug als het te nasaal wordt.']
+    tips: ['Stem naar Drop D.', 'Speel met plectrum.', 'Draai de mid-boost terug als het te nasaal wordt.'],
+    songdelen: [
+      { deel: 'Intro', omschrijving: 'Clean en strak.', footswitch: '', wijzigingen: [{ label: 'Microtubes B3K', actie: 'uit', parameter: '', waarde: '' }] },
+      { deel: 'Refrein', omschrijving: 'Drive erbij, iets zachter om het volume gelijk te houden.', footswitch: 'FS2', wijzigingen: [{ label: 'Microtubes B3K', actie: 'aan', parameter: '', waarde: '' }, { label: 'Gain', actie: 'wijzig', parameter: 'Level', waarde: '90%' }] }
+    ],
+    nam_suggestie: { versterker: 'Ampeg SVT-CL', zoekterm: 'Ampeg SVT bass', waarom: 'De opname gebruikt een SVT.' }
   };
 }
 

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Setlists</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .rij { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .rij .text-input { flex: 1; min-width: 180px; }
+    .item { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg3); font-size: 0.78rem; }
+    .item .nr { font-family: var(--font-a); color: var(--accent); width: 1.6rem; }
+    .item .titel { flex: 1; }
+    .item .sub { color: var(--text-dimmer); font-size: 0.65rem; }
+    .lijst { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.75rem 0; }
+    .knopje { font-family: var(--font-a); font-size: 0.6rem; padding: 0.3rem 0.5rem; border: 1px solid var(--border-bright); background: transparent; color: var(--text-dim); border-radius: 3px; cursor: pointer; }
+    .knopje:hover { color: var(--accent); border-color: var(--accent); }
+    .setlist-kaart { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.9rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .setlist-kaart.actief { border-color: var(--accent); }
+    .setlist-kaart strong { font-family: var(--font-a); letter-spacing: 0.1em; font-size: 0.78rem; }
+    .melding { font-size: 0.72rem; color: var(--text-dim); min-height: 1em; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-group"><div class="logo-mark">DG</div><div class="logo-text"><span class="logo-title">ANAGRAM</span><span class="logo-sub">SETLISTS</span></div></div>
+    <a href="/" style="font-family:var(--font-a);font-size:0.65rem;letter-spacing:0.2em;color:var(--text-dim);text-decoration:none">&larr; APP</a>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="panel-label">MIJN SETLISTS</div>
+      <div class="lijst" id="setlists"></div>
+      <div class="rij"><input class="text-input" id="nieuweNaam" placeholder="Naam van een nieuwe setlist, bijv. Repetitie 12 okt" /><button class="save-btn" onclick="nieuw()">+ NIEUW</button></div>
+    </section>
+    <section class="panel hidden" id="editor">
+      <div class="panel-label" id="editorTitel">SETLIST</div>
+      <div class="rij"><input class="text-input" id="naam" /></div>
+      <div class="lijst" id="items"></div>
+      <div class="rij"><select class="text-input" id="presetKeuze"></select><button class="save-btn" onclick="voegToe()">+ SONG</button></div>
+      <div class="field-group" style="margin-top:1rem"><label class="field-label" for="notitie">NOTITIE</label><input class="text-input" id="notitie" placeholder="bijv. volgorde set 1, wissel naar P-bass na song 4" /></div>
+      <div class="rij">
+        <button class="save-btn" onclick="opslaan()">&#9632; OPSLAAN</button>
+        <button class="save-btn" onclick="printen()">&#9113; OEFENBLAD PRINTEN</button>
+        <button class="save-btn" style="color:var(--accent2);border-color:var(--accent2)" onclick="verwijder()">VERWIJDER</button>
+      </div>
+      <div class="melding" id="melding"></div>
+    </section>
+  </main>
+  <script src="auth-ui.js"></script>
+  <script>
+    var presets = {}, setlists = {}, actief = null;
+
+    function titel(p) { return p ? p.artist + ' — ' + p.song + (p.label ? ' (' + p.label + ')' : '') : '(verwijderde preset)'; }
+    function melding(t) { document.getElementById('melding').textContent = t; }
+
+    function renderLijst() {
+      var keys = Object.keys(setlists).sort().reverse();
+      document.getElementById('setlists').innerHTML = keys.length ? keys.map(function(id) {
+        var s = setlists[id];
+        return '<div class="setlist-kaart' + (actief && actief.id === id ? ' actief' : '') + '" data-id="' + esc(id) + '"><div><strong>' + esc(s.naam) + '</strong><div class="sub" style="font-size:0.65rem;color:var(--text-dimmer)">'
+          + s.items.length + ' songs' + (s.datum ? ' · ' + esc(s.datum) : '') + '</div></div><span>&rsaquo;</span></div>';
+      }).join('') : '<p class="melding">Nog geen setlists.</p>';
+      document.querySelectorAll('.setlist-kaart').forEach(function(el) { el.onclick = function() { openSetlist(el.dataset.id); }; });
+    }
+
+    function renderEditor() {
+      if (!actief) { document.getElementById('editor').classList.add('hidden'); return; }
+      document.getElementById('editor').classList.remove('hidden');
+      document.getElementById('naam').value = actief.naam;
+      document.getElementById('notitie').value = actief.notitie || '';
+      document.getElementById('items').innerHTML = actief.items.map(function(pid, i) {
+        var p = presets[pid];
+        return '<div class="item"><span class="nr">' + (i + 1) + '</span><span class="titel">' + esc(titel(p)) + '<div class="sub">' + esc(p ? (p.bass || '') : '') + '</div></span>'
+          + '<button class="knopje" onclick="schuif(' + i + ',-1)">&uarr;</button><button class="knopje" onclick="schuif(' + i + ',1)">&darr;</button>'
+          + '<button class="knopje" onclick="haalWeg(' + i + ')">&#10005;</button></div>';
+      }).join('') || '<p class="melding">Voeg songs toe uit je opgeslagen presets.</p>';
+      document.getElementById('presetKeuze').innerHTML = Object.keys(presets).map(function(id) { return [id, titel(presets[id])]; })
+        .sort(function(a, b) { return a[1].localeCompare(b[1]); })
+        .map(function(x) { return '<option value="' + esc(x[0]) + '">' + esc(x[1]) + '</option>'; }).join('');
+    }
+
+    function leesEditor() { actief.naam = document.getElementById('naam').value.trim() || 'Setlist'; actief.notitie = document.getElementById('notitie').value.trim(); }
+    function openSetlist(id) { actief = JSON.parse(JSON.stringify(setlists[id])); renderLijst(); renderEditor(); }
+    function nieuw() {
+      var naam = document.getElementById('nieuweNaam').value.trim() || 'Nieuwe setlist';
+      actief = { id: Date.now().toString(), naam: naam, items: [], notitie: '', datum: new Date().toLocaleDateString('nl-NL') };
+      document.getElementById('nieuweNaam').value = '';
+      renderEditor();
+    }
+    function voegToe() { leesEditor(); var id = document.getElementById('presetKeuze').value; if (id) { actief.items.push(id); renderEditor(); } }
+    function haalWeg(i) { leesEditor(); actief.items.splice(i, 1); renderEditor(); }
+    function schuif(i, r) {
+      leesEditor();
+      var j = i + r; if (j < 0 || j >= actief.items.length) return;
+      var x = actief.items[i]; actief.items[i] = actief.items[j]; actief.items[j] = x; renderEditor();
+    }
+    function opslaan() {
+      leesEditor();
+      return apiJson('/api/setlists', { json: { setlist: actief } })
+        .then(function(d) { setlists[d.setlist.id] = d.setlist; renderLijst(); melding('Opgeslagen.'); })
+        .catch(function(e) { melding('Opslaan mislukt: ' + e.message); });
+    }
+    function printen() { opslaan().then(function() { window.open('/print.html?setlist=' + encodeURIComponent(actief.id), '_blank'); }); }
+    function verwijder() {
+      if (!confirm('Setlist verwijderen?')) return;
+      apiJson('/api/setlists', { method: 'DELETE', json: { id: actief.id } })
+        .then(function() { delete setlists[actief.id]; actief = null; renderLijst(); renderEditor(); })
+        .catch(function(e) { melding('Verwijderen mislukt: ' + e.message); });
+    }
+
+    Promise.all([apiJson('/api/presets'), apiJson('/api/setlists')]).then(function(r) {
+      presets = r[0].presets || {}; setlists = r[1].setlists || {};
+      renderLijst();
+    }).catch(function(e) { document.getElementById('setlists').textContent = 'Laden mislukt: ' + e.message; });
+  </script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mijn Rig</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .bas-kaart { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; background: var(--bg3); }
+    .bas-kaart .vol { grid-column: 1 / -1; }
+    .bas-kop { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+    .bas-kop span { font-family: var(--font-a); font-weight: 700; letter-spacing: 0.15em; color: var(--accent); font-size: 0.75rem; }
+    .lijst { display: flex; flex-direction: column; gap: 0.75rem; }
+    .melding { font-size: 0.75rem; min-height: 1em; }
+    .melding.ok { color: var(--accent); } .melding.fout { color: var(--accent2); }
+    textarea.text-input { min-height: 70px; resize: vertical; }
+    @media (max-width: 600px) { .bas-kaart { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-group"><div class="logo-mark">DG</div><div class="logo-text"><span class="logo-title">ANAGRAM</span><span class="logo-sub">MIJN RIG</span></div></div>
+    <a href="/" class="header-link" style="font-family:var(--font-a);font-size:0.65rem;letter-spacing:0.2em;color:var(--text-dim);text-decoration:none">&larr; APP</a>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="panel-label">BASSEN</div>
+      <p class="field-label" style="text-transform:none;letter-spacing:0.05em">Deze gegevens gaan bij elke analyse mee naar Claude. Hoe preciezer (pickups, elektronica, snaren), hoe beter de preset aansluit.</p>
+      <div class="lijst" id="bassen"></div>
+      <button class="save-btn" style="margin-top:1rem" onclick="voegBasToe()">+ BAS TOEVOEGEN</button>
+    </section>
+    <section class="panel">
+      <div class="panel-label">SPEELSITUATIE</div>
+      <div class="field-group"><label class="field-label" for="uitgang">UITGANG / VERSTERKING</label>
+        <input class="text-input" id="uitgang" placeholder="bijv. FRFR-speaker thuis, DI naar PA live, koptelefoon" /></div>
+      <div class="field-group"><label class="field-label" for="speelstijl">SPEELSTIJL</label>
+        <input class="text-input" id="speelstijl" placeholder="bijv. meestal vingers, soms plectrum" /></div>
+      <div class="field-group"><label class="field-label" for="wensen">ALGEMENE WENSEN</label>
+        <textarea class="text-input" id="wensen" placeholder="bijv. liever iets minder hoog, altijd een tuner-vriendelijke noise gate"></textarea></div>
+    </section>
+    <div class="save-row"><button class="save-btn" id="opslaan" onclick="opslaan()">&#9632; OPSLAAN</button></div>
+    <div class="melding" id="melding"></div>
+  </main>
+  <script src="auth-ui.js"></script>
+  <script>
+    var VELDEN = [
+      ['naam', 'NAAM', 'bijv. Spector NS Ethos 5'], ['snaren', 'SNAREN', '4, 5 of 6'], ['stemming', 'STEMMING', 'bijv. BEADG'],
+      ['kort', 'KORTE OMSCHRIJVING (KNOP)', 'bijv. Actief · 5-snarig · EMG 40P5/40J'], ['pickups', 'PICKUPS', 'bijv. EMG 40P5 (neck) + EMG 40J (bridge)', 'vol'],
+      ['elektronica', 'ELEKTRONICA', 'bijv. Aguilar OBP-2 preamp, 18V', 'vol'], ['notities', 'NOTITIES', 'bijv. snaren: DR Hi-Beam 45-125, hoge actie', 'vol']
+    ];
+    var bassen = [];
+
+    function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 32) || 'bas'; }
+
+    function render() {
+      document.getElementById('bassen').innerHTML = bassen.map(function(b, i) {
+        return '<div class="bas-kaart" data-i="' + i + '"><div class="bas-kop"><span>BAS ' + (i + 1) + '</span>'
+          + '<button class="btn-delete saved-action-btn" onclick="verwijder(' + i + ')">&#10005;</button></div>'
+          + VELDEN.map(function(v) {
+            return '<div class="' + (v[3] || '') + '"><label class="field-label">' + v[1] + '</label><input class="text-input" data-veld="' + v[0] + '" value="' + esc(b[v[0]] == null ? '' : b[v[0]]) + '" placeholder="' + esc(v[2]) + '" /></div>';
+          }).join('') + '</div>';
+      }).join('');
+    }
+
+    function leesBassen() {
+      return Array.prototype.map.call(document.querySelectorAll('.bas-kaart'), function(el, i) {
+        var b = { id: bassen[i] && bassen[i].id };
+        el.querySelectorAll('[data-veld]').forEach(function(inp) { b[inp.dataset.veld] = inp.value.trim(); });
+        b.snaren = parseInt(b.snaren, 10) || 4;
+        if (!b.id) b.id = slug(b.naam);
+        return b;
+      }).filter(function(b) { return b.naam; });
+    }
+
+    function voegBasToe() { bassen = leesBassen(); bassen.push({ naam: '', snaren: 4, stemming: 'EADG' }); render(); }
+    function verwijder(i) { bassen = leesBassen(); if (confirm('Bas verwijderen?')) { bassen.splice(i, 1); render(); } }
+
+    function melding(t, soort) { var m = document.getElementById('melding'); m.textContent = t; m.className = 'melding ' + soort; }
+
+    function opslaan() {
+      var rig = { bassen: leesBassen(), uitgang: uitgang.value.trim(), speelstijl: speelstijl.value.trim(), wensen: wensen.value.trim() };
+      var ids = {};
+      rig.bassen.forEach(function(b) { while (ids[b.id]) b.id += '2'; ids[b.id] = true; });
+      if (!rig.bassen.length) return melding('Voeg minstens één bas toe.', 'fout');
+      apiJson('/api/rig', { json: { rig: rig } })
+        .then(function(d) { bassen = d.rig.bassen; render(); melding('Opgeslagen. Nieuwe analyses gebruiken deze rig.', 'ok'); })
+        .catch(function(e) { melding('Opslaan mislukt: ' + e.message, 'fout'); });
+    }
+
+    apiJson('/api/rig').then(function(d) {
+      bassen = d.rig.bassen;
+      uitgang.value = d.rig.uitgang || ''; speelstijl.value = d.rig.speelstijl || ''; wensen.value = d.rig.wensen || '';
+      render();
+    }).catch(function(e) { melding('Laden mislukt: ' + e.message, 'fout'); });
+  </script>
+</body>
+</html>

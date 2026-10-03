@@ -108,3 +108,86 @@ async function blokEditorEnSync(page, basis, stap) {
 }
 
 module.exports.push(blokEditorEnSync);
+
+async function extrasStap4(page, basis, stap) {
+  await page.goto(basis + '/');
+  await page.waitForSelector('#bassSelector .bass-btn');
+  await page.fill('#artistInput', 'Tool');
+  await page.fill('#songInput', 'Schism');
+  await page.click('#analyzeBtn');
+  await page.waitForSelector('#chatPanel:not(.hidden)', { timeout: 15000 });
+  var html = await page.locator('#outputContent').innerHTML();
+  stap('songdelen met footswitch zichtbaar', /fs-badge">FS2/.test(html));
+  stap('NAM-suggestie met TONE3000-zoeklink', /tone3000\.com/.test(html));
+
+  // waarden zelf aanpassen: foute waarde wordt geweigerd, goede toegepast
+  await page.click('text=BEWERK WAARDEN');
+  await page.fill('#bw_1_0', '150%');
+  await page.click('text=TOEPASSEN');
+  stap('bewerken weigert een waarde buiten bereik', /buiten bereik/.test(await page.locator('#bewerkFout').innerText()));
+  await page.fill('#bw_1_0', '33');
+  await page.fill('#bw_1_0', '33%');
+  await page.click('text=TOEPASSEN');
+  await page.waitForSelector('#outputContent .blok-kaart');
+  stap('handmatige waarde staat in de preset', /33%/.test(await page.locator('#outputContent').innerText()));
+
+  // opslaan, opnieuw aanpassen → versie
+  await page.click('#saveBtn');
+  await page.waitForFunction(function() { return /OPGESLAGEN|SAVED/.test(document.getElementById('saveBtn').textContent); });
+  await page.click('text=BEWERK WAARDEN');
+  await page.fill('#bw_1_0', '44%');
+  await page.click('text=TOEPASSEN');
+  await page.waitForFunction(function() { return /WIJZIGINGEN OPSLAAN|SAVE CHANGES/.test(document.getElementById('saveBtn').textContent); });
+  await page.click('#saveBtn');
+  await page.waitForSelector('#versieKeuze', { timeout: 5000 });
+  stap('na opnieuw opslaan staat er een eerdere versie klaar', await page.locator('#versieKeuze option').count() === 1);
+
+  // feedback
+  await page.click('.duim[data-score="1"]');
+  await page.check('.fb-tag input[value="te schel"]');
+  await page.fill('#fbTags', 'Metal, live');
+  await page.click('text=FEEDBACK OPSLAAN');
+  await page.waitForFunction(function() { return /Feedback opgeslagen/.test(document.body.innerText); });
+  var p = await page.evaluate(function() { return fetch('/api/presets').then(function(r) { return r.json(); }); });
+  var bewaard = Object.values(p.presets).find(function(x) { return x.feedback; });
+  stap('feedback en tags opgeslagen bij de preset', bewaard && bewaard.feedback.score === 1 && bewaard.tags.join() === 'metal,live');
+
+  // bibliotheek filteren
+  await page.selectOption('#filterTag', 'metal');
+  var aantal = await page.locator('#savedList .saved-item').count();
+  await page.fill('#filterZoek', 'bestaatniet');
+  var geen = await page.locator('#savedList .saved-item').count();
+  stap('bibliotheek filtert op tag en zoekterm', aantal === 1 && geen === 0, aantal + '/' + geen);
+  await page.fill('#filterZoek', '');
+  await page.selectOption('#filterTag', '');
+
+  // oefenblad
+  var id = bewaard.id;
+  await page.goto(basis + '/print.html?preset=' + id);
+  await page.waitForFunction(function() { return /song/.test(document.getElementById('status').textContent); });
+  stap('oefenblad toont de preset', /Microtubes B3K/.test(await page.locator('#inhoud').innerText()));
+
+  // setlist
+  await page.goto(basis + '/setlists.html');
+  await page.fill('#nieuweNaam', 'Repetitie');
+  await page.click('text=+ NIEUW');
+  await page.click('text=+ SONG');
+  await page.click('text=OPSLAAN');
+  await page.waitForSelector('.setlist-kaart');
+  stap('setlist aangemaakt met een song', /1 songs/.test(await page.locator('#setlists').innerText()));
+
+  // rig
+  await page.goto(basis + '/rig.html');
+  await page.waitForSelector('.bas-kaart');
+  await page.fill('#uitgang', 'FRFR thuis');
+  await page.click('#opslaan');
+  if (await page.waitForSelector('.login-overlay', { timeout: 2000 }).catch(function() { return null; })) {
+    await page.fill('.login-input', process.env.ADMIN_WACHTWOORD);
+    await page.click('.login-ok');
+  }
+  await page.waitForFunction(function() { return /Opgeslagen/.test(document.getElementById('melding').textContent); });
+  var r = await page.evaluate(function() { return fetch('/api/rig').then(function(x) { return x.json(); }); });
+  stap('rig-pagina slaat de speelsituatie op', r.rig.uitgang === 'FRFR thuis');
+}
+
+module.exports.push(extrasStap4);

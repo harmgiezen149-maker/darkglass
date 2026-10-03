@@ -62,6 +62,18 @@
     if (scene.routing === 'parallel' && !(scene.chain_b || []).length) {
       fouten.push({ soort: 'keten', melding: 'routing is parallel, maar chain_b is leeg' });
     }
+    (scene.songdelen || []).forEach(function(d) {
+      (d.wijzigingen || []).forEach(function(w) {
+        var b = blokBijKetenItem(scene, w.label);
+        if (!b) { fouten.push({ soort: 'songdeel', melding: 'songdeel "' + d.deel + '" verwijst naar "' + w.label + '", maar dat blok staat niet in de preset' }); return; }
+        if (w.actie !== 'wijzig') return;
+        var def = Catalogus.vindBlok(catalogus, b.blok);
+        var p = def && Catalogus.vindParameter(def, w.parameter);
+        if (!p) { fouten.push({ soort: 'songdeel', melding: 'songdeel "' + d.deel + '": ' + b.blok + ' heeft geen parameter "' + w.parameter + '"' }); return; }
+        var r = Catalogus.controleerWaarde(p, w.waarde);
+        if (!r.ok) fouten.push({ soort: 'songdeel', melding: 'songdeel "' + d.deel + '": ' + p.naam + ' = "' + w.waarde + '": ' + r.fout });
+      });
+    });
     if (opties.volumeBlok) {
       var laatste = scene.routing === 'parallel' && (scene.merge_naar || []).length ? scene.merge_naar[scene.merge_naar.length - 1] : (scene.chain_a || [])[(scene.chain_a || []).length - 1];
       var lb = laatste && blokBijKetenItem(scene, laatste);
@@ -107,6 +119,19 @@
       });
     });
     if (s.routing === 'parallel' && !s.chain_b.length) s.routing = 'serieel';
+    (s.songdelen || []).forEach(function(d) {
+      d.wijzigingen = (d.wijzigingen || []).filter(function(w) {
+        var b = blokBijKetenItem(s, w.label);
+        if (!b) { aanpassingen.push('Songdeel "' + d.deel + '": verwijzing naar "' + w.label + '" verwijderd'); return false; }
+        if (w.actie !== 'wijzig') return true;
+        var def = Catalogus.vindBlok(catalogus, b.blok);
+        var p = def && Catalogus.vindParameter(def, w.parameter);
+        var r = p && Catalogus.controleerWaarde(p, w.waarde);
+        if (r && r.ok) { w.parameter = p.naam; w.waarde = r.tekst; return true; }
+        aanpassingen.push('Songdeel "' + d.deel + '": ' + w.parameter + ' "' + w.waarde + '" verwijderd');
+        return false;
+      });
+    });
     return { scene: s, aanpassingen: aanpassingen };
   }
 

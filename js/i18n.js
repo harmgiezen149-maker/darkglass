@@ -3,6 +3,7 @@ var currentLang = (function() { try { return localStorage.getItem('dg_lang') || 
 
 var I18N = {
   nl: {
+    navBlokken: 'BLOKKEN',
     // stap 3
     serieel: 'SERIEEL',
     toneAnalyse: 'TONE ANALYSE',
@@ -81,6 +82,7 @@ var I18N = {
     aiTaalInstructie: 'Antwoord in het Nederlands.'
   },
   en: {
+    navBlokken: 'BLOCKS',
     // step 3
     serieel: 'SERIAL',
     toneAnalyse: 'TONE ANALYSIS',

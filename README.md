@@ -6,24 +6,30 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 
 ```
 /
-├── index.html          Hoofdpagina (app)
-├── blocks.html         Blok editor (parameters beheren)
-├── stats.html          Gebruiksstatistieken (wachtwoord)
-├── js/                 App-logica (i18n, util, bibliotheek, app)
+├── index.html          Hoofdpagina (analyse, chat, bibliotheek)
+├── blocks.html         Blok-editor + sync met de Darkglass-handleiding
+├── rig.html            Mijn rig: bassen, uitgang, speelstijl
+├── setlists.html       Setlists samenstellen
+├── print.html          Printbaar oefenblad (preset of setlist)
+├── stats.html          Gebruik en API-kosten (beheer)
+├── auth-ui.js          Escaping + fetch met login-venster
+├── js/                 App-logica: i18n, util, bibliotheek, extra (feedback, versies, bewerken), app
 ├── shared/             Gedeeld door browser en server: catalogus, validatie, renderer, legacy-omzetting
-├── style.css           Styling
-├── manifest.json       PWA manifest
-├── service-worker.js   PWA service worker (offline + caching)
-├── icon-192.png        PWA icoon
-├── icon-512.png        PWA icoon
-├── vercel.json         Vercel config
-├── package.json
-└── api/
-    ├── chat.js         Anthropic streaming endpoint
-    ├── presets.js      Preset opslag (Upstash Redis)
-    ├── blocks.js       Blok definities (Upstash Redis)
-    ├── status.js       Anthropic API status check
-    └── stats.js        Gebruiksstatistieken (Upstash Redis)
+├── style.css, manifest.json, service-worker.js, icon-*.png
+├── api/
+│   ├── analyse.js      Onderzoek → ontwerp → controle (SSE)
+│   ├── chat.js         Fine-tunen en vertalen (SSE)
+│   ├── blocks.js       Blokcatalogus
+│   ├── blocks-sync.js  Handleiding/release notes uitlezen, voorstellen, cron
+│   ├── presets.js      Presets (Redis-hash)
+│   ├── setlists.js     Setlists
+│   ├── rig.js          Rig
+│   ├── login.js        Sessies
+│   ├── stats.js        Gebruik en kosten
+│   ├── status.js       Anthropic-status
+│   └── _lib/           Gedeelde serverlogica (geen endpoints)
+├── scripts/            Dev-server, nep-Claude, UI-rooktest
+└── tests/              Unit-tests (node --test), ook in GitHub Actions
 ```
 
 ## Environment Variables (Vercel)
@@ -44,6 +50,8 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 | `SYNC_CRON_RELEASENOTES` | *(optioneel)* `0` = de wekelijkse cron zoekt niet via web search naar release notes (scheelt ca. $0,10 per week). |
 | `CLAUDE_MODEL` | *(optioneel)* Ander model dan `claude-opus-5-5`. |
 | `CLAUDE_GEEN_FALLBACK` | *(optioneel)* `1` schakelt de server-side fallback uit (bij een weigering door de veiligheidsfilters probeert de API anders zelf een passend model). |
+
+De functies `analyse`, `chat` en `blocks-sync` mogen tot 300 seconden draaien (`vercel.json`). Dat werkt met Vercel *fluid compute*, de standaard voor nieuwe projecten. Op een ouder Hobby-project zonder fluid compute geldt een maximum van 60 s: zet fluid compute dan aan in de projectinstellingen.
 
 ## Lokaal draaien
 
@@ -91,11 +99,19 @@ Parameters worden gestructureerd opgeslagen (type, bereik, eenheid, opties). In 
 
 ## Features
 
-- AI tone-analyse met visuele preset (knobs, toggles, signaalchain)
-- Dual-scene mode (Spector + P-Bass tegelijk)
-- Fine-tune chat met live streaming
-- Cloud preset-opslag (Upstash Redis)
-- Blok editor met samenvouwbare secties
-- NL/EN vertaling
-- PWA (installeerbaar op startscherm)
-- Gebruiksstatistieken + Vercel Analytics
+- **Analyse in drie stappen**: onderzoek met bronnen, een preset als JSON, en controle tegen de catalogus (zie hierboven)
+- **Blokcatalogus** met gestructureerde parameters, gesynchroniseerd met de officiële handleiding en de release notes
+- **Meerdere bassen**: één scene per bas uit je rig, met een B-snaarwaarschuwing voor 4-snarige bassen
+- **Songdelen en footswitches**: welke blokken per songdeel aan of uit gaan, met niveaucompensatie
+- **NAM-suggestie**: welke capture van de echte versterker je in het Neural-blok laadt, met een zoeklink naar TONE3000
+- **Fine-tune chat**: Claude past de preset aan en legt uit wat er veranderde. Je kunt ook zelf waarden bewerken; die worden gecontroleerd
+- **Versies**: elke opgeslagen wijziging bewaart de vorige versie (laatste 10), die je kunt terugzetten
+- **Feedback die meeleert**: met 👍/👎, tags als "te schel" en notities. Goed beoordeelde presets in hetzelfde genre en terugkerende feedback gaan mee in volgende analyses
+- **Bibliotheek**: zoeken en filteren op bas, beoordeling en tag, plus export en import als JSON
+- **Setlists en oefenblad**: printbaar per song of per setlist (ook als PDF)
+- **Kosten in de stats**: kosten per analyse en per soort aanroep, tokens en zoekopdrachten
+- NL/EN, PWA (offline met netwerk-eerst caching), inloggen voor beheer, rate limits
+
+### Direct naar de Anagram exporteren?
+
+Het presetformaat van de Darkglass Suite is niet openbaar. Daarom exporteert de app voorlopig naar JSON, als tekst (KOPIEER TEKST) en als oefenblad. Met een voorbeeldbestand van een preset die uit de Suite is geëxporteerd, kan een directe export worden toegevoegd.
