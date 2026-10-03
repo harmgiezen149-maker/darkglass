@@ -19,14 +19,22 @@
     return { x: +(cx + r * Math.cos(rad)).toFixed(2), y: +(cy + r * Math.sin(rad)).toFixed(2) };
   }
 
+  // Waarde in het midden van de knop: zo groot als past binnen de ring
+  // (ca. 34 eenheden breed), met een maximum voor korte waarden.
+  function waardeTekst(display) {
+    var tekst = String(display);
+    var grootte = Math.max(8, Math.min(15, Math.floor(34 / (Math.max(tekst.length, 1) * 0.62) * 10) / 10));
+    return '<text class="knob-center-val" x="30" y="31" style="font-size:' + grootte + 'px">' + esc(tekst) + '</text>';
+  }
+
   function knop(label, display, pct) {
     pct = Math.max(0, Math.min(1, pct));
     var s = pt(30, 30, 22, 180), eind = pt(30, 30, 22, 510), e = pt(30, 30, 22, 180 + pct * 330);
     var bg = 'M ' + s.x + ' ' + s.y + ' A 22 22 0 1 1 ' + eind.x + ' ' + eind.y;
     var fill = pct > 0.001 ? 'M ' + s.x + ' ' + s.y + ' A 22 22 0 ' + (pct * 330 > 180 ? 1 : 0) + ' 1 ' + e.x + ' ' + e.y : '';
-    return '<div class="knob-wrap"><svg class="knob-svg" width="60" height="60" viewBox="0 0 60 60">'
+    return '<div class="knob-wrap"><svg class="knob-svg" width="68" height="68" viewBox="0 0 60 60">'
       + '<path class="knob-track" d="' + bg + '"/>' + (fill ? '<path class="knob-fill" d="' + fill + '"/>' : '')
-      + '<text class="knob-center-val" x="30" y="31">' + esc(display) + '</text></svg><div class="knob-label">' + esc(label) + '</div></div>';
+      + waardeTekst(display) + '</svg><div class="knob-label">' + esc(label) + '</div></div>';
   }
 
   function knopBipolair(label, display, pct) {
@@ -39,10 +47,10 @@
       var e = pt(30, 30, 22, pct > 0 ? boog : 360 - boog);
       fill = 'M ' + c.x + ' ' + c.y + ' A 22 22 0 ' + (boog > 180 ? 1 : 0) + ' ' + (pct > 0 ? 1 : 0) + ' ' + e.x + ' ' + e.y;
     }
-    return '<div class="knob-wrap"><svg class="knob-svg" width="60" height="60" viewBox="0 0 60 60">'
+    return '<div class="knob-wrap"><svg class="knob-svg" width="68" height="68" viewBox="0 0 60 60">'
       + '<path class="knob-track" d="' + bg + '"/><circle cx="' + c.x + '" cy="' + c.y + '" r="2.5" fill="#3d3d4d"/>'
       + (fill ? '<path class="knob-fill" d="' + fill + '"/>' : '')
-      + '<text class="knob-center-val" x="30" y="31">' + esc(display) + '</text></svg><div class="knob-label">' + esc(label) + '</div></div>';
+      + waardeTekst(display) + '</svg><div class="knob-label">' + esc(label) + '</div></div>';
   }
 
   function schakelaar(label, aan) {
