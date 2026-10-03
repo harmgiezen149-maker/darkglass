@@ -110,7 +110,7 @@ registreer(function(params, ctx) {
       ]
     }) }];
   }
-  if (schema && schema.properties && schema.properties.blokken && !schema.properties.secties) {
+  if (schema && schema.properties && schema.properties.blokken && schema.required.length === 1) {
     var b = /"Peggy Fliptop"/.test(ctx.user)
       ? [{ naam: 'Peggy Fliptop', basis: 'Ampeg B-15', pagina: 60, parameters: [
           { naam: 'Volume', type: 'knop', min: 0, max: 10, eenheid: '', opties: [], standaard: null, omschrijving: '' },
@@ -138,6 +138,66 @@ registreer(function(params, ctx) {
           { naam: 'Peggy Classic', sectie: 'AMP', basis: 'Ampeg SVT', versie: '1.16', bron_url: 'https://www.darkglass.com/', parameters: [] }]
       } }
     ];
+  }
+  return null;
+});
+
+// ---------- analyse (stap 3) ----------
+function nepScene(basId, fout) {
+  return {
+    bas_id: basId, b_snaar_vereist: basId !== 'spector', stemming: 'Drop D',
+    toneanalyse: 'Justin Chancellor speelt met plectrum op een **Wal** bas met veel hoog-mid.',
+    routing: 'serieel', chain_a: ['Compressor/Limiter', 'Microtubes B3K', 'Jim Bass', 'Gain'], chain_b: [], merge_naar: [],
+    blokken: [
+      { label: 'Compressor/Limiter', blok: 'Compressor/Limiter', origineel: 'compressie', instellingen: [{ parameter: 'Threshold', waarde: '-20 dB' }, { parameter: 'Ratio', waarde: '4:1' }], uitleg: 'Egaliseert de aanslag.' },
+      { label: 'Microtubes B3K', blok: 'Microtubes B3K', origineel: 'Darkglass B3K', instellingen: [{ parameter: 'Drive', waarde: fout ? '140%' : '40%' }, { parameter: 'Blend', waarde: '50%' }, { parameter: 'Grunt', waarde: 'Fat' }, { parameter: 'Mid Boost', waarde: 'On' }, { parameter: 'Tone', waarde: '5 kHz' }], uitleg: 'Grommende drive.' },
+      { label: 'Jim Bass', blok: 'Jim Bass', origineel: 'Ampeg SVT', instellingen: [{ parameter: 'Gain', waarde: '45%' }, { parameter: 'Bright', waarde: 'Off' }], uitleg: 'Ampeg-basis.' },
+      { label: 'Gain', blok: 'Gain', origineel: 'volume', instellingen: [{ parameter: 'Level', waarde: '100%' }], uitleg: 'Volumeregelaar.' }
+    ],
+    tips: ['Stem naar Drop D.', 'Speel met plectrum.', 'Draai de mid-boost terug als het te nasaal wordt.']
+  };
+}
+
+registreer(function(params, ctx) {
+  if ((params.tools || []).some(function(t) { return t.name === 'lever_toneprofiel'; })) {
+    var blokkenUit = [];
+    if ((params.tools || []).some(function(t) { return t.name === 'web_search'; })) {
+      blokkenUit.push({ type: 'server_tool_use', id: 'srvtoolu_a', name: 'web_search', input: { query: 'Justin Chancellor Schism bass rig' } });
+      blokkenUit.push({ type: 'web_search_tool_result', tool_use_id: 'srvtoolu_a', content: [] });
+      blokkenUit.push({ type: 'server_tool_use', id: 'srvtoolu_b', name: 'web_fetch', input: { url: 'https://equipboard.com/pros/justin-chancellor' } });
+    }
+    blokkenUit.push({ type: 'tool_use', id: 'toolu_p', name: 'lever_toneprofiel', input: {
+      artiest: 'Tool', song: 'Schism', opname: 'Lateralus (2001)', bassist: 'Justin Chancellor', genre: 'Progressive metal',
+      samenvatting: 'Plectrum op een Wal bas, door een Ampeg SVT met wat drive.', b_snaar_vereist: false, stemming: 'Drop D',
+      speeltechniek: 'Plectrum', klank: { karakter: 'Grommend en helder', eq: 'Veel hoog-mid', compressie: 'Licht', distortion: 'Lichte drive', effecten: 'Geen' },
+      bevindingen: [
+        { onderwerp: 'Bas', waarde: 'Wal Mk1', zekerheid: 'hoog', bron_urls: ['https://equipboard.com/pros/justin-chancellor'] },
+        { onderwerp: 'Versterker', waarde: 'Ampeg SVT', zekerheid: 'middel', bron_urls: [] },
+        { onderwerp: 'Pedaal', waarde: '<script>alert(1)</script>', zekerheid: 'laag', bron_urls: ['javascript:alert(1)'] }
+      ],
+      bronnen: [{ titel: 'Equipboard', url: 'https://equipboard.com/pros/justin-chancellor' }, { titel: 'kwaadaardig', url: 'javascript:alert(1)' }],
+      zekerheid: { algemeen: 'middel', toelichting: 'Gear goed gedocumenteerd, instellingen niet.' }
+    } });
+    return blokkenUit;
+  }
+  var schema = schemaVan(params);
+  if (!schema || !schema.properties) return null;
+  if (schema.properties.teksten) {
+    var lijst = JSON.parse(ctx.user);
+    return [{ type: 'text', text: JSON.stringify({ teksten: lijst.map(function(x) { return '[EN] ' + x; }) }) }];
+  }
+  if (schema.properties.scenes) {
+    var ids = schema.properties.scenes.items.properties.bas_id.enum;
+    return [{ type: 'text', text: JSON.stringify({ artiest: 'Tool', song: 'Schism', scenes: ids.map(function(id, i) { return nepScene(id, i === 0); }) }) }];
+  }
+  if (schema.properties.antwoord) {
+    var id = schema.properties.scene.properties.bas_id.enum[0];
+    var s = nepScene(id, false);
+    s.blokken[1].instellingen[0].waarde = '25%';
+    return [{ type: 'text', text: JSON.stringify({ antwoord: 'Drive teruggezet naar 25% voor minder vervorming.', scene: s }) }];
+  }
+  if (schema.properties.bas_id) {
+    return [{ type: 'text', text: JSON.stringify(nepScene(schema.properties.bas_id.enum[0], false)) }];
   }
   return null;
 });

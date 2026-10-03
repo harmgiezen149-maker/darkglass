@@ -9,7 +9,8 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 ├── index.html          Hoofdpagina (app)
 ├── blocks.html         Blok editor (parameters beheren)
 ├── stats.html          Gebruiksstatistieken (wachtwoord)
-├── script.js           App logica
+├── js/                 App-logica (i18n, util, bibliotheek, app)
+├── shared/             Gedeeld door browser en server: catalogus, validatie, renderer, legacy-omzetting
 ├── style.css           Styling
 ├── manifest.json       PWA manifest
 ├── service-worker.js   PWA service worker (offline + caching)
@@ -67,6 +68,14 @@ git push
 
 # Vercel deployt automatisch bij elke push naar main
 ```
+
+## Hoe een analyse werkt
+
+1. **Onderzoek**: MusicBrainz zoekt de juiste opname en de bassist. Daarna zoekt Claude met web search en web fetch naar de bas, de pickups, de versterker, de pedalen, de speeltechniek en de productie. Het resultaat is een *toneprofiel* met per bevinding een zekerheid (zeker / waarschijnlijk / inschatting) en bronnen. Het profiel wordt 180 dagen per song bewaard; vink *Opnieuw onderzoeken* aan om het te verversen.
+2. **Ontwerp**: met het toneprofiel, je rig en de blokcatalogus maakt Claude de preset als JSON (structured outputs). Bloknamen komen uit een vaste lijst, dus Claude kan geen blokken verzinnen.
+3. **Controle**: de server controleert elke parameter en waarde tegen de catalogus, inclusief bereik, eenheid en keuzes, en ook de signaalketen. Bij fouten repareert Claude de preset één keer. Wat daarna nog niet klopt, wordt automatisch begrensd of weggehaald. Dat zie je onder *Controle tegen de catalogus*.
+
+Fine-tunen en vertalen werken op dezelfde JSON. Bij vertalen worden alleen de tekstvelden vertaald, de waarden niet. Oude presets in tekstformaat worden bij het laden automatisch omgezet.
 
 ## Blokken synchroniseren met Darkglass
 

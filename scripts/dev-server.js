@@ -11,7 +11,7 @@ var path = require('path');
 
 process.env.DG_DEV = '1';
 var ROOT = path.resolve(__dirname, '..');
-var POORT = parseInt(process.argv[2] || process.env.PORT || '3000', 10);
+var POORT = parseInt((require.main === module && process.argv[2]) || process.env.PORT || '3000', 10);
 
 if (process.env.DG_FAKE_CLAUDE === '1' || !process.env.ANTHROPIC_API_KEY) {
   require(path.join(ROOT, 'api/_lib/claude'))._zetClient(require('./fake-claude'));

@@ -6,6 +6,9 @@
     },
     "api/blocks-sync.js": {
       "maxDuration": 300
+    },
+    "api/analyse.js": {
+      "maxDuration": 300
     }
   },
   "headers": [

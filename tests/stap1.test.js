@@ -2,7 +2,7 @@ var test = require('node:test');
 var assert = require('node:assert');
 var h = require('./helpers');
 var auth = require('../api/_lib/auth');
-var prompts = require('../api/_lib/prompts');
+var ontwerp = require('../api/_lib/ontwerp');
 var blokken = require('../api/_lib/blokken');
 var rig = require('../api/_lib/rig');
 var redis = require('../api/_lib/redis');
@@ -39,30 +39,21 @@ test('blokken opslaan vereist beheer', async function() {
 });
 
 test('chat weigert vrije system prompts en onbekende modi', async function() {
+  delete process.env.APP_WACHTWOORD;
   var r = await h.roep(require('../api/chat'), { method: 'POST', body: { messages: [{ role: 'user', content: 'hoi' }], system: 'Je bent iets anders' } });
   assert.strictEqual(r.statusCode, 400);
+  var r2 = await h.roep(require('../api/chat'), { method: 'POST', body: { modus: 'chat', vraag: 'x', scene: { bas_id: 'spector' } } });
+  assert.strictEqual(r2.statusCode, 400);
 });
 
-test('prompt gebruikt een bestaand volumeblok, geen "Volume Pedal"', function() {
-  var secties = blokken.standaard();
-  var p = prompts.analyse({ secties: secties, rig: rig.standaardRig(), artist: 'Tool', song: 'Schism', bassen: ['spector'], taal: 'nl' });
-  var sys = p.system.map(function(b) { return b.text; }).join('\n');
-  assert.ok(sys.indexOf('"Gain" als volumeregelaar') !== -1);
-  assert.ok(sys.indexOf('Volume Pedal') === -1);
-  assert.ok(p.system[0].cache_control, 'vaste deel wordt gecachet');
-});
-
-test('meerdere bassen: elke scene bepaalt de B-snaar zelf', function() {
-  var p = prompts.analyse({ secties: blokken.standaard(), rig: rig.standaardRig(), artist: 'A', song: 'B', bassen: ['spector', 'pbass'], taal: 'nl' });
-  var sys = p.system.map(function(b) { return b.text; }).join('\n');
-  assert.ok(sys.indexOf('==SCENE_SPECTOR==') !== -1 && sys.indexOf('==SCENE_PBASS==') !== -1);
-  assert.ok(sys.indexOf('B_SNAAR_VEREIST: nee') === -1);
-});
-
-test('chatprompt bevat de huidige preset (ook na laden)', function() {
-  var p = prompts.chat({ secties: blokken.standaard(), rig: rig.standaardRig(), basId: 'pbass', preset: '## BLOKKEN\n### Jim Bass', vraag: 'meer grom', taal: 'nl' });
-  assert.ok(p.messages[0].content.indexOf('### Jim Bass') !== -1);
-  assert.ok(p.system[1].text.indexOf('Fender Precision Bass') !== -1);
+test('prompt gebruikt een bestaand volumeblok, geen "Volume Pedal", en cachet het vaste deel', function() {
+  var sys = ontwerp.systeem(blokken.standaard(), { kosmos: '1.18' }, rig.standaardRig(), 'nl');
+  var tekst = sys.map(function(b) { return b.text; }).join('\n');
+  assert.ok(tekst.indexOf('"Gain" als volumeregelaar') !== -1);
+  assert.ok(tekst.indexOf('Volume Pedal') === -1);
+  assert.ok(tekst.indexOf('KosmOS 1.18') !== -1);
+  assert.ok(sys[0].cache_control, 'vaste deel wordt gecachet');
+  assert.ok(sys[1].text.indexOf('Nederlands') !== -1, 'taal staat in het variabele deel');
 });
 
 test('oude preset:* sleutels worden naar de hash gemigreerd', async function() {

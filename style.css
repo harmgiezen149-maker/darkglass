@@ -312,3 +312,35 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 .dual-badge { font-size: 0.55rem; color: var(--accent2); border: 1px solid var(--accent2); padding: 0.1rem 0.35rem; border-radius: 2px; margin-left: 0.5rem; font-family: var(--font-a); letter-spacing: 0.1em; }
 .afgekapt-melding { margin-top: 1rem; padding: 0.6rem 0.8rem; border: 1px solid var(--accent2); color: var(--accent2); border-radius: 4px; font-size: 0.75rem; }
 @media (max-width: 600px) { .bass-selector.bass-selector-2, .bass-selector.bass-selector-3 { grid-template-columns: 1fr; } }
+
+/* ===== Stap 3: onderzoek, voortgang, controle ===== */
+.check-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; color: var(--text-dim); margin: -0.25rem 0 1rem; cursor: pointer; }
+.check-label input { accent-color: var(--accent); }
+.voortgang { list-style: none; margin-top: 1rem; font-size: 0.68rem; color: var(--text-dim); text-align: left; display: inline-flex; flex-direction: column; gap: 0.2rem; max-width: 100%; }
+.voortgang li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voortgang li::before { content: '\203A  '; color: var(--accent); }
+.onderzoek-box, .controle-box { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem 1rem; margin-bottom: 1.25rem; background: rgba(124,92,252,0.04); font-size: 0.78rem; }
+.onderzoek-box summary, .controle-box summary { cursor: pointer; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; font-family: var(--font-a); font-size: 0.68rem; letter-spacing: 0.15em; color: var(--accent3); list-style: none; }
+.onderzoek-box summary::-webkit-details-marker, .controle-box summary::-webkit-details-marker { display: none; }
+.onderzoek-box summary::before, .controle-box summary::before { content: '\25B8'; transition: transform 0.2s; }
+.onderzoek-box[open] summary::before, .controle-box[open] summary::before { transform: rotate(90deg); }
+.onderzoek-box p { margin-top: 0.6rem; line-height: 1.6; }
+.onderzoek-kop { margin-top: 0.6rem; color: var(--text); font-weight: 700; font-size: 0.75rem; }
+.onderzoek-toelichting { color: var(--text-dim); font-size: 0.72rem; }
+.onderzoek-cache { font-size: 0.58rem; color: var(--text-dimmer); letter-spacing: 0.1em; }
+.bevindingen { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.72rem; }
+.bevindingen th { text-align: left; color: var(--text-dim); font-weight: 400; padding: 0.35rem 0.5rem 0.35rem 0; vertical-align: top; white-space: nowrap; }
+.bevindingen td { padding: 0.35rem 0.5rem 0.35rem 0; vertical-align: top; border-top: 1px solid var(--border); }
+.bevindingen tr:first-child td { border-top: none; }
+.bevindingen a, .onderzoek-bronnen a { color: var(--accent3); }
+.onderzoek-bronnen { margin-top: 0.75rem; font-size: 0.68rem; color: var(--text-dim); line-height: 1.7; word-break: break-word; }
+.zeker { font-family: var(--font-a); font-size: 0.55rem; letter-spacing: 0.1em; padding: 0.1rem 0.4rem; border-radius: 2px; border: 1px solid; white-space: nowrap; }
+.zeker-hoog { color: var(--accent); border-color: var(--accent); }
+.zeker-middel { color: #ffb347; border-color: #ffb347; }
+.zeker-laag { color: var(--text-dimmer); border-color: var(--border-bright); }
+.stemming-badge { display: inline-block; font-size: 0.7rem; color: var(--text-dim); border: 1px solid var(--border-bright); border-radius: 3px; padding: 0.2rem 0.5rem; margin-bottom: 0.6rem; }
+.blok-origineel { color: var(--text-dimmer); font-weight: 400; font-size: 0.85em; }
+.controle-box { margin-top: 1.25rem; background: transparent; }
+.controle-box ul { margin: 0.6rem 0 0 1rem; color: var(--text-dim); font-size: 0.72rem; line-height: 1.6; }
+.textbadge-fout { border-color: var(--accent2) !important; }
+.legacy-melding { margin-bottom: 1rem; padding: 0.6rem 0.8rem; border: 1px dashed var(--border-bright); border-radius: 4px; font-size: 0.72rem; color: var(--text-dim); }

@@ -18,13 +18,22 @@ async function analyseEnScenes(page, basis, stap) {
   await page.click('#sceneTabs [data-scene="pbass"]');
   stap('B-snaarwaarschuwing bij de 4-snarige P-bass', await page.locator('#outputContent .bsnaar-warning').count() === 1);
 
+  stap('onderzoek met bronnen zichtbaar', await page.locator('#outputContent .onderzoek-box').count() === 1);
+  var html = await page.locator('#outputContent').innerHTML();
+  stap('bronnen met javascript: worden niet als link getoond', html.indexOf('javascript:') === -1);
+  stap('Grunt als keuzelijst uit de catalogus', /selector-opt active">Fat/.test(html));
+
   await page.fill('#chatInput', 'Iets minder drive');
   await page.click('.send-btn');
   await page.waitForFunction(function() {
     var m = document.querySelectorAll('#chatMessages .msg.assistant .msg-bubble');
-    return m.length >= 2 && /bijgewerkt|updated/i.test(m[m.length - 1].textContent);
+    return m.length >= 2 && /25%/.test(m[m.length - 1].textContent);
   }, null, { timeout: 15000 });
-  stap('fine-tune chat werkt de actieve scene bij', true);
+  stap('fine-tune chat geeft uitleg en werkt de actieve scene bij', /25%/.test(await page.locator('#outputContent').innerText()));
+
+  await page.click('#translateBtn');
+  await page.waitForFunction(function() { return /\[EN\]/.test(document.getElementById('outputContent').textContent); }, null, { timeout: 15000 });
+  stap('vertalen vertaalt alleen de tekstvelden', true);
 
   await page.click('#saveBtn');
   await page.waitForSelector('#savedList .saved-item', { timeout: 10000 });
@@ -44,6 +53,10 @@ async function xssWordtGeescaped(page, basis, stap) {
   var xss = await page.evaluate(function() { return window.__xss; });
   var tekst = await page.locator('#savedList').innerText();
   stap('HTML in presetnamen wordt niet uitgevoerd', !xss && tekst.indexOf('<img') !== -1);
+
+  await page.click('#savedList [data-actie="laad"][data-id="xss1"]');
+  await page.waitForSelector('#outputContent .legacy-melding');
+  stap('oude tekstpreset wordt omgezet en getoond', !(await page.evaluate(function() { return window.__xss; })));
 }
 
 async function verwijderenVraagtBeheer(page, basis, stap) {
