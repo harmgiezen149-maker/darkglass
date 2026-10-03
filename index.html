@@ -43,20 +43,7 @@
 
       <div class="field-group">
         <label class="field-label" data-i18n="bassSelectie">BASS SELECTIE</label>
-        <div class="bass-selector bass-selector-3">
-          <button class="bass-btn active" data-bass="spector">
-            <span class="bass-name">SPECTOR NS ETHOS 5</span>
-            <span class="bass-detail" data-i18n="spectorDetail">Actief &middot; 5-snarig &middot; EMG-Hz P/HH</span>
-          </button>
-          <button class="bass-btn" data-bass="pbass">
-            <span class="bass-name">FENDER PRECISION BASS</span>
-            <span class="bass-detail" data-i18n="pbassDetail">Actief &middot; 4-snarig &middot; Split-P EMG-Hz</span>
-          </button>
-          <button class="bass-btn bass-btn-dual" data-bass="beide">
-            <span class="bass-name" data-i18n="beideBassen">BEIDE BASSEN</span>
-            <span class="bass-detail" data-i18n="beideDetail">2 scenes &middot; Spector + P-Bass</span>
-          </button>
-        </div>
+        <div class="bass-selector" id="bassSelector"></div>
       </div>
 
       <div class="field-group">
@@ -86,14 +73,7 @@
     <section class="panel hidden" id="outputPanel">
       <div class="panel-label" data-i18n="panel02">02 / ANAGRAM PRESET</div>
       <div class="output-meta" id="outputMeta"></div>
-      <div class="scene-tabs hidden" id="sceneTabs">
-        <button class="scene-tab active" id="tabSpector" onclick="switchScene('spector')" data-i18n="scene1">
-          SCENE 1 &mdash; SPECTOR NS ETHOS 5
-        </button>
-        <button class="scene-tab" id="tabPbass" onclick="switchScene('pbass')" data-i18n="scene2">
-          SCENE 2 &mdash; FENDER P-BASS
-        </button>
-      </div>
+      <div class="scene-tabs hidden" id="sceneTabs"></div>
       <div class="output-content" id="outputContent"></div>
     </section>
 
@@ -139,6 +119,7 @@
     </div>
   </div>
 
+  <script src="auth-ui.js"></script>
   <script src="script.js"></script>
   <!-- Vercel Analytics -->
   <script defer src="/_vercel/insights/script.js"></script>

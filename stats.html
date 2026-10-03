@@ -134,29 +134,36 @@
 
 <footer>ANAGRAM TONE ARCHITECT — USAGE STATS</footer>
 
+<script src="auth-ui.js"></script>
 <script>
 function doLogin() {
   var pw = document.getElementById('pwInput').value;
   if (!pw) return;
-  laadStats(pw);
+  fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol: 'admin', wachtwoord: pw }) })
+  .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Inloggen mislukt'); }); })
+  .then(laadStats)
+  .catch(toonFout);
 }
 
-function laadStats(pw) {
-  fetch('/api/stats?pw=' + encodeURIComponent(pw))
+function toonFout(e) {
+  var err = document.getElementById('loginErr');
+  err.textContent = 'Fout: ' + e.message;
+  err.classList.remove('hidden');
+}
+
+// Haalt stats op met de beheerderssessie (cookie); zonder sessie blijft het loginvenster staan.
+function laadStats(stil) {
+  fetch('/api/stats', { credentials: 'same-origin' })
   .then(function(r) {
-    if (r.status === 401) throw new Error('Verkeerd wachtwoord');
+    if (r.status === 401) { if (stil === true) return null; throw new Error('Verkeerd wachtwoord'); }
     return r.json();
   })
   .then(function(d) {
+    if (!d) return;
     if (d.error) throw new Error(d.error);
-    sessionStorage.setItem('stats_pw', pw);
     toonDashboard(d);
   })
-  .catch(function(e) {
-    var err = document.getElementById('loginErr');
-    err.textContent = 'Fout: ' + e.message;
-    err.classList.remove('hidden');
-  });
+  .catch(toonFout);
 }
 
 function toonDashboard(d) {
@@ -201,13 +208,12 @@ function toonDashboard(d) {
     var datum = new Date(d.laatsteEvent.ts);
     var dStr = datum.toLocaleString('nl-NL');
     var metaStr = d.laatsteEvent.meta && d.laatsteEvent.meta.bass ? ' · bas: ' + d.laatsteEvent.meta.bass : '';
-    document.getElementById('lastEvent').innerHTML = '<strong>' + d.laatsteEvent.event.toUpperCase() + '</strong> · ' + dStr + metaStr;
+    document.getElementById('lastEvent').innerHTML = '<strong>' + esc(String(d.laatsteEvent.event).toUpperCase()) + '</strong> · ' + esc(dStr + metaStr);
   }
 }
 
-// Auto-login als wachtwoord nog in session zit
-var savedPw = sessionStorage.getItem('stats_pw');
-if (savedPw) laadStats(savedPw);
+// Direct proberen: werkt als er al een beheerderssessie is
+laadStats(true);
 </script>
 
 </body>

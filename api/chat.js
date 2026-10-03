@@ -1,114 +1,99 @@
+var http = require('./_lib/http');
+var auth = require('./_lib/auth');
+var limiet = require('./_lib/ratelimit');
+var claude = require('./_lib/claude');
+var prompts = require('./_lib/prompts');
+var blokken = require('./_lib/blokken');
+var rigLib = require('./_lib/rig');
+
+var MAX_LEN = { artist: 120, song: 160, extra: 1500, vraag: 1500, preset: 40000 };
+
+function kort(s, n) { return String(s || '').trim().slice(0, n); }
+
+// POST { modus: 'analyse'|'chat'|'vertaal', ... } → Server-Sent Events:
+//   data: {"text": "..."}          tekst-delta
+//   data: {"status": "..."}        voortgang
+//   data: {"waarschuwing": "..."}  bv. afgekapt antwoord
+//   data: {"fout": "..."}          fout tijdens het streamen
+//   data: [DONE]
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!http.vereisMethode(req, res, ['POST'])) return;
+  if (!auth.vereisApp(req, res)) return;
 
-  const { messages, system } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Invalid request: messages required' });
-  }
+  var b = http.body(req);
+  var modus = b.modus;
+  var taal = b.taal === 'en' ? 'en' : 'nl';
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
-
-  // Laad blokken dynamisch uit Redis
-  let blockPrompt = '';
+  var verzoek, effort;
   try {
-    const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
-    const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (redisUrl && redisToken) {
-      const r = await fetch(redisUrl + '/get/' + encodeURIComponent('anagram:blocks'), {
-        headers: { Authorization: 'Bearer ' + redisToken }
+    var secties = await blokken.laad();
+    var rig = await rigLib.laad();
+    if (modus === 'analyse') {
+      var artist = kort(b.artist, MAX_LEN.artist), song = kort(b.song, MAX_LEN.song);
+      if (!artist || !song) return http.stuur(res, 400, { error: 'Artiest en song zijn verplicht' });
+      verzoek = prompts.analyse({ secties: secties, rig: rig, artist: artist, song: song, bassen: b.bassen, extra: kort(b.extra, MAX_LEN.extra), taal: taal });
+      effort = 'high';
+    } else if (modus === 'chat') {
+      if (!b.preset || !b.vraag) return http.stuur(res, 400, { error: 'Preset en vraag zijn verplicht' });
+      verzoek = prompts.chat({
+        secties: secties, rig: rig, basId: b.basId, taal: taal,
+        preset: kort(b.preset, MAX_LEN.preset), vraag: kort(b.vraag, MAX_LEN.vraag),
+        context: kort(b.context, 200), geschiedenis: Array.isArray(b.geschiedenis) ? b.geschiedenis : []
       });
-      const d = await r.json();
-      if (d.result) {
-        let blocks = d.result;
-        if (typeof blocks === 'string') blocks = JSON.parse(blocks);
-        if (typeof blocks === 'string') blocks = JSON.parse(blocks);
-        if (Array.isArray(blocks) && blocks.length > 0) {
-          blockPrompt = '\n\n=== BESCHIKBARE ANAGRAM BLOKKEN ===\n';
-          blocks.forEach(function(sectie) {
-            blockPrompt += '\n--- ' + sectie.sectie + ' ---\n';
-            (sectie.blokken || []).forEach(function(blok) {
-              blockPrompt += blok.naam + ' (' + blok.basis + ')\n';
-              blockPrompt += '  Parameters: ' + blok.parameters + '\n';
-            });
-          });
-          blockPrompt += '\nGebruik ALLEEN bovenstaande bloknamen en parameters. Geef GEEN parameters op die niet vermeld zijn.';
-        }
-      }
+      effort = 'medium';
+    } else if (modus === 'vertaal') {
+      if (!b.tekst) return http.stuur(res, 400, { error: 'Geen tekst' });
+      verzoek = prompts.vertaal({ tekst: kort(b.tekst, MAX_LEN.preset), taal: taal });
+      effort = 'low';
+    } else {
+      return http.stuur(res, 400, { error: 'Onbekende modus' });
     }
-  } catch(e) {
-    console.error('Blokken laden mislukt:', e.message);
+  } catch (e) {
+    return http.stuur(res, 500, { error: e.message });
   }
 
-  const finalSystem = (system || '') + blockPrompt;
+  var rl = await limiet.claude(req, modus === 'analyse' ? 'analyse' : 'chat', auth.isAdmin(req));
+  if (!rl.ok) return http.stuur(res, 429, { error: rl.melding });
+
+  var c;
+  try { c = claude.client(); } catch (e) { return http.stuur(res, 500, { error: e.message }); }
+
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.statusCode = 200;
+  function zend(obj) { res.write('data: ' + (typeof obj === 'string' ? obj : JSON.stringify(obj)) + '\n\n'); }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        stream: true,
-        system: finalSystem,
-        messages: messages,
-      }),
-    });
+    var stream = c.beta.messages.stream(claude.metFallback({
+      model: claude.MODEL,
+      max_tokens: 32000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: effort },
+      system: verzoek.system,
+      messages: verzoek.messages
+    }));
 
-    if (!response.ok) {
-      const err = await response.json();
-      return res.status(response.status).json({ error: err.error?.message || 'API error' });
-    }
-
-    // Stream door naar de client als Server-Sent Events
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // bewaar onvolledige regel
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-              res.write('data: ' + JSON.stringify({ text: parsed.delta.text }) + '\n\n');
-            }
-            if (parsed.type === 'message_stop') {
-              res.write('data: [DONE]\n\n');
-            }
-          } catch(e) {}
-        }
+    var denktGemeld = false;
+    for await (var ev of stream) {
+      if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'thinking' && !denktGemeld) {
+        zend({ status: 'denkt na' });
+        denktGemeld = true;
+      } else if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+        zend({ text: ev.delta.text });
       }
     }
-
-    res.end();
-
-  } catch (err) {
-    console.error('API error:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    res.end();
+    var msg = await stream.finalMessage();
+    if (msg.stop_reason === 'max_tokens') zend({ waarschuwing: 'Het antwoord is afgekapt omdat het te lang werd.' });
+    if (msg.stop_reason === 'refusal') zend({ fout: 'Claude heeft dit verzoek geweigerd.' });
+    await claude.registreerKosten(modus, claude.kostenVan(msg.usage));
+    zend('[DONE]');
+  } catch (e) {
+    console.error('Claude-fout:', e);
+    var melding = e instanceof claude.Anthropic.RateLimitError ? 'Claude is even overbelast, probeer het zo opnieuw.'
+      : e instanceof claude.Anthropic.APIError ? 'Claude API-fout (' + e.status + ')'
+      : 'Interne fout';
+    zend({ fout: melding });
   }
+  res.end();
 };

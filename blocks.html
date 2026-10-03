@@ -147,6 +147,7 @@
 
 <footer>DARKGLASS ANAGRAM BLOK EDITOR</footer>
 
+<script src="auth-ui.js"></script>
 <script>
 var blocksData = [];
 
@@ -165,8 +166,7 @@ function parseBlocks(raw) {
 // =====================
 function loadBlocks(url) {
   document.getElementById('blocksContainer').innerHTML = '<div class="loading-msg">Blokken laden...</div>';
-  fetch(url || '/api/blocks')
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  apiJson(url || '/api/blocks')
     .then(function(d) {
       blocksData = parseBlocks(d.blocks);
       if (blocksData.length === 0) {
@@ -194,14 +194,8 @@ function saveBlocks(setDefault) {
   var btn = document.getElementById('saveBtn');
   btn.disabled = true;
   btn.textContent = 'OPSLAAN...';
-  fetch('/api/blocks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ blocks: blocksData, setDefault: setDefault === true })
-  })
-  .then(function(r) { return r.json(); })
+  apiJson('/api/blocks', { json: { blocks: blocksData, setDefault: setDefault === true } })
   .then(function(d) {
-    if (d.error) throw new Error(d.error);
     var msg = setDefault
       ? 'Opgeslagen als nieuwe standaard! Herstel Standaard keert voortaan hierop terug.'
       : 'Blokken opgeslagen! De app gebruikt deze instellingen direct.';

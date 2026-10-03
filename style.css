@@ -305,3 +305,10 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
   .pwa-banner { padding: 0.75rem; }
   .pwa-banner-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* ===== Stap 1: login, meldingen, dynamische bas-keuze ===== */
+.bass-selector-1 { grid-template-columns: 1fr; }
+.bass-selector-2 { grid-template-columns: 1fr 1fr; }
+.dual-badge { font-size: 0.55rem; color: var(--accent2); border: 1px solid var(--accent2); padding: 0.1rem 0.35rem; border-radius: 2px; margin-left: 0.5rem; font-family: var(--font-a); letter-spacing: 0.1em; }
+.afgekapt-melding { margin-top: 1rem; padding: 0.6rem 0.8rem; border: 1px solid var(--accent2); color: var(--accent2); border-radius: 4px; font-size: 0.75rem; }
+@media (max-width: 600px) { .bass-selector.bass-selector-2, .bass-selector.bass-selector-3 { grid-template-columns: 1fr; } }

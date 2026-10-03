@@ -29,10 +29,26 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 
 | Naam | Omschrijving |
 |------|--------------|
-| `ANTHROPIC_API_KEY` | Anthropic API sleutel |
+| `ANTHROPIC_API_KEY` | Anthropic API-sleutel |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
-| `STATS_WACHTWOORD` | Wachtwoord voor stats.html dashboard |
+| `ADMIN_WACHTWOORD` | Wachtwoord voor beheer: blokken, rig, presets verwijderen, stats. Valt terug op `STATS_WACHTWOORD`. Zonder een van beide is beheer uitgeschakeld. |
+| `APP_WACHTWOORD` | *(optioneel)* Als gezet moet je inloggen om de app te gebruiken. Aanrader als de URL publiek is. |
+| `SESSION_SECRET` | *(optioneel)* Extra geheim voor de sessie-cookies. |
+| `LIMIET_ANALYSES_PER_UUR` | *(optioneel)* Analyses per IP per uur, standaard 20. |
+| `LIMIET_CHAT_PER_UUR` | *(optioneel)* Chat/vertaal-verzoeken per IP per uur, standaard 60. |
+| `LIMIET_CLAUDE_PER_DAG` | *(optioneel)* Maximaal aantal Claude-aanroepen per dag voor de hele app, standaard 300. |
+| `CLAUDE_MODEL` | *(optioneel)* Ander model dan `claude-opus-5-5`. |
+| `CLAUDE_GEEN_FALLBACK` | *(optioneel)* `1` schakelt de server-side fallback uit (bij een weigering door de veiligheidsfilters probeert de API anders zelf een passend model). |
+
+## Lokaal draaien
+
+```bash
+npm install
+npm run dev        # http://localhost:3000, geheugen-Redis en nep-Claude zonder API-sleutel
+npm test           # unit-tests
+npm run test:ui    # UI-rooktest met Playwright (vereist Playwright)
+```
 
 ## Deploy via Git Bash
 
