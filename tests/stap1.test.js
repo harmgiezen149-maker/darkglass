@@ -44,7 +44,7 @@ test('chat weigert vrije system prompts en onbekende modi', async function() {
 });
 
 test('prompt gebruikt een bestaand volumeblok, geen "Volume Pedal"', function() {
-  var secties = blokken.getDefaultBlocks();
+  var secties = blokken.standaard();
   var p = prompts.analyse({ secties: secties, rig: rig.standaardRig(), artist: 'Tool', song: 'Schism', bassen: ['spector'], taal: 'nl' });
   var sys = p.system.map(function(b) { return b.text; }).join('\n');
   assert.ok(sys.indexOf('"Gain" als volumeregelaar') !== -1);
@@ -53,14 +53,14 @@ test('prompt gebruikt een bestaand volumeblok, geen "Volume Pedal"', function() 
 });
 
 test('meerdere bassen: elke scene bepaalt de B-snaar zelf', function() {
-  var p = prompts.analyse({ secties: blokken.getDefaultBlocks(), rig: rig.standaardRig(), artist: 'A', song: 'B', bassen: ['spector', 'pbass'], taal: 'nl' });
+  var p = prompts.analyse({ secties: blokken.standaard(), rig: rig.standaardRig(), artist: 'A', song: 'B', bassen: ['spector', 'pbass'], taal: 'nl' });
   var sys = p.system.map(function(b) { return b.text; }).join('\n');
   assert.ok(sys.indexOf('==SCENE_SPECTOR==') !== -1 && sys.indexOf('==SCENE_PBASS==') !== -1);
   assert.ok(sys.indexOf('B_SNAAR_VEREIST: nee') === -1);
 });
 
 test('chatprompt bevat de huidige preset (ook na laden)', function() {
-  var p = prompts.chat({ secties: blokken.getDefaultBlocks(), rig: rig.standaardRig(), basId: 'pbass', preset: '## BLOKKEN\n### Jim Bass', vraag: 'meer grom', taal: 'nl' });
+  var p = prompts.chat({ secties: blokken.standaard(), rig: rig.standaardRig(), basId: 'pbass', preset: '## BLOKKEN\n### Jim Bass', vraag: 'meer grom', taal: 'nl' });
   assert.ok(p.messages[0].content.indexOf('### Jim Bass') !== -1);
   assert.ok(p.system[1].text.indexOf('Fender Precision Bass') !== -1);
 });

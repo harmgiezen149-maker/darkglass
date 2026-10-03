@@ -8,13 +8,13 @@ var TAAL = {
   en: 'Answer in English.'
 };
 
-function basisInstructies(secties) {
+function basisInstructies(secties, kosmos) {
   var vol = blokken.volumeBlok(secties);
   var volumeRegel = vol
     ? 'Sluit de signaalchain ALTIJD af met het blok "' + vol.naam + '" als volumeregelaar, zodat de speler volumecontrole heeft. Geef een aanbevolen startwaarde voor Level.\n\n'
     : '';
 
-  return 'Je bent een expert in basgitaar-sound design voor de Darkglass Anagram (KosmOS). '
+  return 'Je bent een expert in basgitaar-sound design voor de Darkglass Anagram (KosmOS' + (kosmos ? ' ' + kosmos : '') + '). '
     + 'Gebruik ALLEEN de bloknamen en parameters uit de lijst BESCHIKBARE ANAGRAM BLOKKEN hieronder. '
     + 'Geef GEEN parameters op die niet in die lijst staan, en blijf binnen de opgegeven bereiken.\n\n'
     + 'Zet ALTIJD de eerste drie regels zo:\n'
@@ -38,14 +38,14 @@ function basisInstructies(secties) {
     + volumeRegel
     + 'BELANGRIJK: De sectienamen (TONE ANALYSE, SIGNAALCHAIN, BLOKKEN, FINE-TUNE TIPS) moeten EXACT zo blijven staan, ook als je een andere taal gebruikt voor de inhoud. '
     + 'De labels INSTELLINGEN, UITLEG, ARTIEST, SONG, CHAIN_A, CHAIN_B, MERGE_NAAR, SERIEEL en PARALLEL ook letterlijk zo houden.\n\n'
-    + blokken.promptTekst(secties);
+    + blokken.promptTekst(secties, kosmos);
 }
 
 // System prompt als blokken: het vaste deel (instructies + bloklijst) wordt
 // gecachet, het variabele deel staat erachter.
-function systeem(secties, variabel) {
+function systeem(secties, variabel, kosmos) {
   return [
-    { type: 'text', text: basisInstructies(secties), cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: basisInstructies(secties, kosmos), cache_control: { type: 'ephemeral' } },
     { type: 'text', text: variabel }
   ];
 }
@@ -79,7 +79,7 @@ function analyse(opts) {
   }
   if (opts.extra) vraag += '\n\nExtra wensen: ' + opts.extra;
 
-  return { system: systeem(opts.secties, variabel), messages: [{ role: 'user', content: vraag }], bassen: bassen };
+  return { system: systeem(opts.secties, variabel, opts.kosmos), messages: [{ role: 'user', content: vraag }], bassen: bassen };
 }
 
 function chat(opts) {
@@ -91,7 +91,7 @@ function chat(opts) {
   var tekst = 'Dit is de huidige preset' + (opts.context ? ' (' + opts.context + ')' : '') + ':\n\n' + opts.preset + '\n\n'
     + (eerder.length ? 'Eerdere aanpassingsverzoeken in dit gesprek:\n' + eerder.join('\n') + '\n\n' : '')
     + 'Nieuw verzoek: ' + opts.vraag;
-  return { system: systeem(opts.secties, variabel), messages: [{ role: 'user', content: tekst }] };
+  return { system: systeem(opts.secties, variabel, opts.kosmos), messages: [{ role: 'user', content: tekst }] };
 }
 
 function vertaal(opts) {

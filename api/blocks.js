@@ -2,6 +2,7 @@ var http = require('./_lib/http');
 var auth = require('./_lib/auth');
 var redis = require('./_lib/redis');
 var blokken = require('./_lib/blokken');
+var Catalogus = require('../shared/catalogus');
 
 // GET            → huidige blokken
 // GET ?reset=1   → herstel naar eigen standaard (of ingebouwde lijst) — beheer
@@ -11,7 +12,7 @@ module.exports = async function handler(req, res) {
   var q = http.query(req);
 
   if (req.method === 'GET' && q.reset !== '1') {
-    return http.stuur(res, 200, { blocks: await blokken.laad() });
+    return http.stuur(res, 200, { blocks: await blokken.laad(), meta: await blokken.laadMeta() });
   }
 
   if (!auth.vereisAdmin(req, res)) return;
@@ -19,13 +20,13 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      var eigen = await redis.getJson(blokken.KEY_STANDAARD);
-      if (Array.isArray(eigen) && eigen.length) {
-        await redis.setJson(blokken.KEY, eigen);
+      var eigen = Catalogus.normaliseerCatalogus(await redis.getJson(blokken.KEY_STANDAARD));
+      if (eigen.length) {
+        await blokken.bewaar(eigen);
         return http.stuur(res, 200, { blocks: eigen, source: 'custom-default' });
       }
-      var std = blokken.getDefaultBlocks();
-      await redis.setJson(blokken.KEY, std);
+      var std = blokken.standaard();
+      await blokken.bewaar(std);
       return http.stuur(res, 200, { blocks: std, source: 'hardcoded' });
     } catch (e) {
       return http.stuur(res, 500, { error: e.message });
@@ -35,9 +36,9 @@ module.exports = async function handler(req, res) {
   var b = http.body(req);
   if (!Array.isArray(b.blocks)) return http.stuur(res, 400, { error: 'Geen blokken opgegeven' });
   try {
-    await redis.setJson(blokken.KEY, b.blocks);
-    if (b.setDefault === true) await redis.setJson(blokken.KEY_STANDAARD, b.blocks);
-    return http.stuur(res, 200, { ok: true, savedAsDefault: b.setDefault === true });
+    var cat = await blokken.bewaar(b.blocks);
+    if (b.setDefault === true) await redis.setJson(blokken.KEY_STANDAARD, cat);
+    return http.stuur(res, 200, { ok: true, blocks: cat, savedAsDefault: b.setDefault === true });
   } catch (e) {
     return http.stuur(res, 500, { error: e.message });
   }

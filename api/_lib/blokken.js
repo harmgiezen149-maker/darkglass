@@ -1,38 +1,51 @@
-// Blokcatalogus van de Anagram: opslag in Redis + standaardlijst.
+// Blokcatalogus van de Anagram: opslag in Redis + ingebouwde startlijst.
+// Parameters zijn gestructureerd (zie shared/catalogus.js); oude opslag met
+// parameters als tekst wordt bij het laden automatisch omgezet.
 var redis = require('./redis');
+var Catalogus = require('../../shared/catalogus');
 
 var KEY = 'anagram:blocks';
 var KEY_STANDAARD = 'anagram:blocks:default';
+var KEY_META = 'anagram:blocks:meta';
 
 async function laad() {
-  if (!redis.isGeconfigureerd()) return getDefaultBlocks();
+  if (!redis.isGeconfigureerd()) return standaard();
   try {
     var b = await redis.getJson(KEY);
-    return Array.isArray(b) && b.length ? b : getDefaultBlocks();
+    var cat = Catalogus.normaliseerCatalogus(b);
+    return cat.length ? cat : standaard();
   } catch (e) {
     console.error('Blokken laden mislukt:', e.message);
-    return getDefaultBlocks();
+    return standaard();
   }
 }
 
+async function laadMeta() {
+  var meta = redis.isGeconfigureerd() ? await redis.getJson(KEY_META).catch(function() { return null; }) : null;
+  return Object.assign({ kosmos: '1.13', bijgewerkt: null }, meta || {});
+}
+
+async function bewaar(secties, meta) {
+  var cat = Catalogus.normaliseerCatalogus(secties);
+  var cmds = [['SET', KEY, JSON.stringify(cat)]];
+  if (meta) cmds.push(['SET', KEY_META, JSON.stringify(Object.assign(await laadMeta(), meta, { bijgewerkt: new Date().toISOString() }))]);
+  await redis.pipeline(cmds);
+  return cat;
+}
+
+function standaard() {
+  return Catalogus.normaliseerCatalogus(getDefaultBlocks());
+}
+
 // Leesbare lijst voor in de prompt.
-function promptTekst(secties) {
-  var t = '=== BESCHIKBARE ANAGRAM BLOKKEN ===\n';
-  secties.forEach(function(sectie) {
-    t += '\n--- ' + sectie.sectie + ' ---\n';
-    (sectie.blokken || []).forEach(function(blok) {
-      t += blok.naam + (blok.basis ? ' (' + blok.basis + ')' : '') + '\n';
-      t += '  Parameters: ' + blok.parameters + '\n';
-    });
-  });
-  return t;
+function promptTekst(secties, kosmos) {
+  return '=== BESCHIKBARE ANAGRAM BLOKKEN' + (kosmos ? ' (KosmOS ' + kosmos + ')' : '') + ' ===\n' + Catalogus.promptTekst(secties);
 }
 
 // Het blok dat als volumeregelaar aan het eind van de keten hoort:
 // bij voorkeur een blok met "volume" in de naam, anders "Gain".
 function volumeBlok(secties) {
-  var alle = [];
-  secties.forEach(function(s) { (s.blokken || []).forEach(function(b) { alle.push(b); }); });
+  var alle = Catalogus.alleBlokken(secties).map(function(x) { return x.blok; });
   return alle.find(function(b) { return /volume/i.test(b.naam); })
     || alle.find(function(b) { return /^gain$/i.test(String(b.naam).trim()); })
     || null;
@@ -131,4 +144,4 @@ function getDefaultBlocks() {
   ];
 }
 
-module.exports = { KEY: KEY, KEY_STANDAARD: KEY_STANDAARD, laad: laad, promptTekst: promptTekst, volumeBlok: volumeBlok, getDefaultBlocks: getDefaultBlocks };
+module.exports = { KEY: KEY, KEY_STANDAARD: KEY_STANDAARD, KEY_META: KEY_META, laad: laad, laadMeta: laadMeta, bewaar: bewaar, standaard: standaard, promptTekst: promptTekst, volumeBlok: volumeBlok, getDefaultBlocks: getDefaultBlocks };

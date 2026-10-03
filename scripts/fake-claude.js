@@ -93,3 +93,51 @@ module.exports = {
   registreer: registreer,
   _laatsteParams: null
 };
+
+// ---------- sync (stap 2) ----------
+function schemaVan(params) {
+  return params.output_config && params.output_config.format && params.output_config.format.schema;
+}
+
+registreer(function(params, ctx) {
+  var schema = schemaVan(params);
+  if (schema && schema.properties && schema.properties.secties && schema.properties.kosmos) {
+    return [{ type: 'text', text: JSON.stringify({
+      kosmos: '1.18',
+      secties: [
+        { sectie: 'DRIVE', blokken: [{ naam: 'Microtubes B3K', pagina: 40 }, { naam: 'Vintage Microtubes', pagina: 41 }] },
+        { sectie: 'AMP', blokken: [{ naam: 'Peggy Fliptop', pagina: 60 }] }
+      ]
+    }) }];
+  }
+  if (schema && schema.properties && schema.properties.blokken && !schema.properties.secties) {
+    var b = /"Peggy Fliptop"/.test(ctx.user)
+      ? [{ naam: 'Peggy Fliptop', basis: 'Ampeg B-15', pagina: 60, parameters: [
+          { naam: 'Volume', type: 'knop', min: 0, max: 10, eenheid: '', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Channel', type: 'keuze', min: null, max: null, eenheid: '', opties: ['1', '2'], standaard: null, omschrijving: '' }] }]
+      : [{ naam: 'Microtubes B3K', basis: 'Darkglass B3K', pagina: 40, parameters: [
+          { naam: 'Drive', type: 'knop', min: 0, max: 100, eenheid: '%', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Blend', type: 'knop', min: 0, max: 100, eenheid: '%', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Level', type: 'knop', min: -12, max: 12, eenheid: 'dB', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Grunt', type: 'keuze', min: null, max: null, eenheid: '', opties: ['Off', 'Fat', 'Raw'], standaard: null, omschrijving: '' }] },
+        { naam: 'Vintage Microtubes', basis: 'Darkglass VMT', pagina: 41, parameters: [
+          { naam: 'Drive', type: 'knop', min: 0, max: 100, eenheid: '%', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Blend', type: 'knop', min: 0, max: 100, eenheid: '%', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Level', type: 'knop', min: 0, max: 100, eenheid: '%', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Tone', type: 'knop', min: 0, max: 100, eenheid: '%', opties: [], standaard: null, omschrijving: '' },
+          { naam: 'Grunt', type: 'schakelaar', min: null, max: null, eenheid: '', opties: [], standaard: null, omschrijving: '' }] }];
+    return [{ type: 'text', text: JSON.stringify({ blokken: b }) }];
+  }
+  if ((params.tools || []).some(function(t) { return t.name === 'rapporteer_kosmos'; })) {
+    return [
+      { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'Darkglass KosmOS release notes' } },
+      { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_1', content: [] },
+      { type: 'tool_use', id: 'toolu_1', name: 'rapporteer_kosmos', input: {
+        nieuwste_versie: '1.18', releasedatum: '2026-09', bronnen: ['https://www.darkglass.com/'],
+        blokken: [{ naam: 'Neural Amp', sectie: 'NEURAL', basis: 'NAM A2', versie: '1.16', bron_url: 'https://www.darkglass.com/', parameters: [] },
+          { naam: 'Peggy Classic', sectie: 'AMP', basis: 'Ampeg SVT', versie: '1.16', bron_url: 'https://www.darkglass.com/', parameters: [] }]
+      } }
+    ];
+  }
+  return null;
+});

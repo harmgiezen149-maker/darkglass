@@ -35,6 +35,48 @@ function metFallback(params) {
   return Object.assign({}, params, FALLBACK);
 }
 
+// Volledig antwoord ophalen via streaming (voorkomt HTTP-timeouts bij lange
+// antwoorden). Bij pause_turn (server-tools) wordt automatisch doorgegaan.
+// opties.onEvent krijgt elk stream-event (voor voortgang).
+async function voltooi(params, opties) {
+  opties = opties || {};
+  var messages = params.messages.slice();
+  var kosten = { dollar: 0, tokens: 0 };
+  for (var ronde = 0; ronde < 4; ronde++) {
+    var stream = client().beta.messages.stream(metFallback(Object.assign({}, params, { messages: messages })));
+    if (opties.onEvent) {
+      for await (var ev of stream) opties.onEvent(ev);
+    }
+    var msg = await stream.finalMessage();
+    kosten = telOp(kosten, kostenVan(msg.usage));
+    if (msg.stop_reason === 'pause_turn') {
+      messages.push({ role: 'assistant', content: msg.content });
+      continue;
+    }
+    msg.kosten = kosten;
+    return msg;
+  }
+  throw new Error('Claude bleef pauzeren (pause_turn)');
+}
+
+// Haalt de JSON uit een antwoord met output_config.format.
+function jsonUit(msg) {
+  if (msg.stop_reason === 'refusal') throw new Error('Claude heeft het verzoek geweigerd');
+  if (msg.stop_reason === 'max_tokens') throw new Error('Antwoord afgekapt (te lang)');
+  var tekst = msg.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
+  try { return JSON.parse(tekst); } catch (e) { throw new Error('Ongeldige JSON van Claude'); }
+}
+
+// Haalt de input van een (strict) client-tool uit het antwoord.
+function toolInput(msg, naam) {
+  var b = msg.content.find(function(x) { return x.type === 'tool_use' && x.name === naam; });
+  return b ? b.input : null;
+}
+
+function jsonFormaat(schema) {
+  return { type: 'json_schema', schema: schema };
+}
+
 function kostenVan(usage) {
   if (!usage) return { dollar: 0, tokens: 0 };
   var inp = usage.input_tokens || 0;
@@ -80,5 +122,6 @@ async function registreerKosten(soort, kosten) {
 
 module.exports = {
   MODEL: MODEL, PRIJS: PRIJS, client: client, _zetClient: _zetClient, metFallback: metFallback,
+  voltooi: voltooi, jsonUit: jsonUit, toolInput: toolInput, jsonFormaat: jsonFormaat,
   kostenVan: kostenVan, telOp: telOp, registreerKosten: registreerKosten, Anthropic: Anthropic
 };

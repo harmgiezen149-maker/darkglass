@@ -28,15 +28,16 @@ module.exports = async function handler(req, res) {
   try {
     var secties = await blokken.laad();
     var rig = await rigLib.laad();
+    var kosmos = (await blokken.laadMeta()).kosmos;
     if (modus === 'analyse') {
       var artist = kort(b.artist, MAX_LEN.artist), song = kort(b.song, MAX_LEN.song);
       if (!artist || !song) return http.stuur(res, 400, { error: 'Artiest en song zijn verplicht' });
-      verzoek = prompts.analyse({ secties: secties, rig: rig, artist: artist, song: song, bassen: b.bassen, extra: kort(b.extra, MAX_LEN.extra), taal: taal });
+      verzoek = prompts.analyse({ secties: secties, kosmos: kosmos, rig: rig, artist: artist, song: song, bassen: b.bassen, extra: kort(b.extra, MAX_LEN.extra), taal: taal });
       effort = 'high';
     } else if (modus === 'chat') {
       if (!b.preset || !b.vraag) return http.stuur(res, 400, { error: 'Preset en vraag zijn verplicht' });
       verzoek = prompts.chat({
-        secties: secties, rig: rig, basId: b.basId, taal: taal,
+        secties: secties, kosmos: kosmos, rig: rig, basId: b.basId, taal: taal,
         preset: kort(b.preset, MAX_LEN.preset), vraag: kort(b.vraag, MAX_LEN.vraag),
         context: kort(b.context, 200), geschiedenis: Array.isArray(b.geschiedenis) ? b.geschiedenis : []
       });

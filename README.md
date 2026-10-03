@@ -38,6 +38,9 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 | `LIMIET_ANALYSES_PER_UUR` | *(optioneel)* Analyses per IP per uur, standaard 20. |
 | `LIMIET_CHAT_PER_UUR` | *(optioneel)* Chat/vertaal-verzoeken per IP per uur, standaard 60. |
 | `LIMIET_CLAUDE_PER_DAG` | *(optioneel)* Maximaal aantal Claude-aanroepen per dag voor de hele app, standaard 300. |
+| `CRON_SECRET` | *(aanbevolen)* Geheim voor de wekelijkse Vercel Cron die controleert of er nieuwe blokken of een nieuwe handleiding zijn. Zonder dit geheim draait de cron niet. |
+| `HANDLEIDING_URL` | *(optioneel)* Andere URL voor de Anagram-handleiding (PDF). |
+| `SYNC_CRON_RELEASENOTES` | *(optioneel)* `0` = de wekelijkse cron zoekt niet via web search naar release notes (scheelt ca. $0,10 per week). |
 | `CLAUDE_MODEL` | *(optioneel)* Ander model dan `claude-opus-5-5`. |
 | `CLAUDE_GEEN_FALLBACK` | *(optioneel)* `1` schakelt de server-side fallback uit (bij een weigering door de veiligheidsfilters probeert de API anders zelf een passend model). |
 
@@ -64,6 +67,18 @@ git push
 
 # Vercel deployt automatisch bij elke push naar main
 ```
+
+## Blokken synchroniseren met Darkglass
+
+In de blok-editor (`/blocks.html`) staat het paneel **SYNC MET DARKGLASS**:
+
+- **ZOEK NIEUWE BLOKKEN** controleert of de handleiding gewijzigd is en zoekt via web search naar blokken uit nieuwere KosmOS-versies. Die blokken komen binnen als *onbevestigd*.
+- **LEES HANDLEIDING** haalt de officiële PDF op en laat Claude in stappen alle blokken en parameters uitlezen (bereiken, eenheden, keuzes). Kosten: ca. $2–5 per volledige run.
+- **UPLOAD PDF** doet hetzelfde met een eigen PDF (max. 3,2 MB; gebruik voor grotere bestanden de URL).
+
+Elke wijziging komt als voorstel binnen (nieuw / gewijzigd / niet in de handleiding). Je kiest per voorstel OVERNEMEN, BEWERK of NEGEREN. Er wordt nooit automatisch iets overschreven. Elke week controleert een Vercel Cron of er iets nieuws is en zet dan de melding **UPDATE BESCHIKBAAR** in de editor.
+
+Parameters worden gestructureerd opgeslagen (type, bereik, eenheid, opties). In de editor typ je ze nog steeds als tekst, bijvoorbeeld `Drive (0-100%), Grunt (Off/Fat/Raw), Bright (On/Off)`. De chips eronder laten zien hoe ze herkend zijn.
 
 ## Features
 

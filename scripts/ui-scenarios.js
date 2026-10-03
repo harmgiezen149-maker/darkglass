@@ -60,3 +60,38 @@ async function verwijderenVraagtBeheer(page, basis, stap) {
 }
 
 module.exports = [analyseEnScenes, xssWordtGeescaped, verwijderenVraagtBeheer];
+
+async function blokEditorEnSync(page, basis, stap) {
+  await page.goto(basis + '/blocks.html');
+  // Na het vorige scenario is er al een beheerderssessie; anders inloggen.
+  if (await page.waitForSelector('.login-overlay', { timeout: 2000 }).catch(function() { return null; })) {
+    await page.fill('.login-input', process.env.ADMIN_WACHTWOORD);
+    await page.click('.login-ok');
+  }
+  await page.waitForSelector('#syncInfo:not(:empty)');
+  await page.waitForFunction(function() { return /KosmOS/.test(document.getElementById('syncInfo').textContent); });
+  stap('sync-paneel toont de catalogusversie', true);
+
+  await page.click('.sectie-chevron >> nth=0');
+  await page.click('.blok-chevron >> nth=0');
+  var chips = await page.locator('.blok-item >> nth=0 >> .param-chip').count();
+  stap('parameters worden als chips getoond', chips >= 3, 'chips ' + chips);
+
+  await page.click('#btnCheck');
+  await page.waitForSelector('.voorstel', { timeout: 15000 });
+  var aantal = await page.locator('.voorstel').count();
+  stap('ZOEK NIEUWE BLOKKEN levert voorstellen op', aantal === 2, 'voorstellen ' + aantal);
+
+  await page.click('text=ALLE NIEUWE OVERNEMEN');
+  await page.waitForFunction(function() { return document.querySelectorAll('.voorstel').length === 0; }, null, { timeout: 5000 });
+  var namen = await page.locator('.blok-naam-preview').allInnerTexts();
+  stap('overgenomen blokken staan in de editor', namen.indexOf('Neural Amp') !== -1 && namen.indexOf('Peggy Classic') !== -1, namen.slice(-3).join(','));
+
+  await page.click('#saveBtn');
+  await page.waitForSelector('#statusBar.ok');
+  var d = await page.evaluate(function() { return fetch('/api/blocks').then(function(r) { return r.json(); }); });
+  var b3k = d.blocks[0].blokken[0];
+  stap('opslaan bewaart gestructureerde parameters', Array.isArray(b3k.parameters) && b3k.parameters[0].type === 'knop');
+}
+
+module.exports.push(blokEditorEnSync);

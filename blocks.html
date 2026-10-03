@@ -107,6 +107,46 @@
     .add-sectie-btn { width: 100%; padding: 0.875rem; background: transparent; border: 1px dashed var(--border-bright); border-radius: 4px; color: var(--text-dim); font-family: var(--font-a); font-size: 0.7rem; letter-spacing: 0.2em; cursor: pointer; transition: all 0.2s; }
     .add-sectie-btn:hover { border-color: var(--accent3); color: var(--accent3); }
     .loading-msg { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 0.8rem; letter-spacing: 0.2em; }
+    /* PARAMETERS & HERKOMST */
+    .param-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
+    .param-chip { font-size: 0.6rem; padding: 0.15rem 0.45rem; border-radius: 3px; border: 1px solid var(--border-bright); color: var(--text-dim); }
+    .param-chip b { color: var(--text); font-weight: 600; }
+    .param-chip.knop { border-color: rgba(0,229,176,0.4); }
+    .param-chip.schakelaar { border-color: rgba(124,92,252,0.5); }
+    .param-chip.keuze { border-color: rgba(124,92,252,0.3); }
+    .param-chip.tekst { border-color: var(--accent2); color: var(--accent2); }
+    .status-badge { font-size: 0.55rem; letter-spacing: 0.1em; padding: 0.1rem 0.35rem; border-radius: 2px; border: 1px solid; flex-shrink: 0; font-family: var(--font-a); }
+    .status-geverifieerd { color: var(--accent); border-color: var(--accent); }
+    .status-onbevestigd { color: #ffb347; border-color: #ffb347; }
+    .status-handmatig { color: var(--text-dimmer); border-color: var(--border-bright); }
+    .blok-herkomst { font-size: 0.62rem; color: var(--text-dimmer); }
+    .blok-herkomst a { color: var(--accent3); }
+    /* SYNC */
+    .sync-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .sync-panel.update { border-color: #ffb347; }
+    .sync-kop { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .sync-titel { font-family: var(--font-a); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2em; color: var(--accent3); }
+    .sync-info { font-size: 0.68rem; color: var(--text-dim); line-height: 1.6; }
+    .update-badge { font-family: var(--font-a); font-size: 0.6rem; letter-spacing: 0.15em; color: var(--bg); background: #ffb347; padding: 0.2rem 0.5rem; border-radius: 3px; font-weight: 700; }
+    .sync-acties { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .sync-url { flex: 1; min-width: 200px; }
+    .sync-log { font-size: 0.68rem; color: var(--text-dim); display: flex; flex-direction: column; gap: 0.2rem; max-height: 220px; overflow-y: auto; }
+    .sync-log .ok { color: var(--accent); }
+    .sync-log .fout { color: var(--accent2); }
+    .voorstel { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 0.65rem 0.8rem; display: flex; flex-direction: column; gap: 0.45rem; }
+    .voorstel-kop { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .voorstel-soort { font-family: var(--font-a); font-size: 0.55rem; letter-spacing: 0.15em; padding: 0.1rem 0.4rem; border-radius: 2px; }
+    .soort-nieuw { background: rgba(0,229,176,0.15); color: var(--accent); }
+    .soort-gewijzigd { background: rgba(124,92,252,0.15); color: var(--accent3); }
+    .soort-ontbreekt { background: rgba(255,77,109,0.12); color: var(--accent2); }
+    .voorstel-naam { font-family: var(--font-a); font-size: 0.75rem; font-weight: 600; }
+    .voorstel-sectie { font-size: 0.6rem; color: var(--text-dimmer); }
+    .voorstel-knoppen { margin-left: auto; display: flex; gap: 0.35rem; }
+    .verschil { font-size: 0.65rem; color: var(--text-dim); }
+    .verschil del { color: var(--accent2); }
+    .verschil ins { color: var(--accent); text-decoration: none; }
+    .voorstel textarea { min-height: 60px; }
+    .groep-titel { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); margin-top: 0.25rem; }
     footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dimmer); background: var(--bg2); }
     @media (max-width: 600px) { main { padding: 1rem; } header { padding: 1rem; } .blok-row { grid-template-columns: 1fr; } .top-bar { flex-direction: column; align-items: flex-start; } }
   </style>
@@ -141,6 +181,22 @@
   </div>
 
   <div id="statusBar" class="status-bar"></div>
+  <section class="sync-panel" id="syncPanel">
+    <div class="sync-kop">
+      <span class="sync-titel">SYNC MET DARKGLASS</span>
+      <span id="updateBadge" class="update-badge" style="display:none">UPDATE BESCHIKBAAR</span>
+    </div>
+    <div class="sync-info" id="syncInfo">Status laden...</div>
+    <div class="sync-acties">
+      <button class="btn btn-sm btn-secondary" id="btnCheck" onclick="syncCheck()">ZOEK NIEUWE BLOKKEN</button>
+      <button class="btn btn-sm btn-accent" id="btnHandleiding" onclick="syncHandleiding()">LEES HANDLEIDING</button>
+      <label class="btn btn-sm btn-secondary" for="pdfInput">UPLOAD PDF</label>
+      <input type="file" id="pdfInput" accept="application/pdf" style="display:none" onchange="syncUpload(this)" />
+    </div>
+    <div class="sync-acties"><input class="text-input sync-url" id="syncUrl" placeholder="URL van de handleiding (PDF)" /></div>
+    <div class="sync-log" id="syncLog"></div>
+    <div id="voorstellen"></div>
+  </section>
   <div id="blocksContainer"><div class="loading-msg">Blokken laden...</div></div>
   <button class="add-sectie-btn" onclick="addSectie()">+ NIEUWE SECTIE TOEVOEGEN</button>
 </main>
@@ -148,6 +204,7 @@
 <footer>DARKGLASS ANAGRAM BLOK EDITOR</footer>
 
 <script src="auth-ui.js"></script>
+<script src="shared/catalogus.js"></script>
 <script>
 var blocksData = [];
 
@@ -224,11 +281,17 @@ function readFromDom() {
     var sectieNaam = sectieEl.querySelector('.sectie-naam-input').value.trim();
     var blokken = [];
     sectieEl.querySelectorAll('.blok-item').forEach(function(blokEl) {
-      blokken.push({
+      var paramTekst = (blokEl.querySelector('[data-veld="params"]') || {}).value || '';
+      var meta = blokEl._meta || { status: 'handmatig' };
+      var blok = {
         naam:       (blokEl.querySelector('[data-veld="naam"]')   || {}).value || '',
         basis:      (blokEl.querySelector('[data-veld="basis"]')  || {}).value || '',
-        parameters: (blokEl.querySelector('[data-veld="params"]') || {}).value || ''
-      });
+        parameters: Catalogus.parseParameterTekst(paramTekst),
+        status:     paramTekst.trim() === String(meta.origineel || '').trim() ? meta.status : 'handmatig'
+      };
+      if (meta.bron) blok.bron = meta.bron;
+      if (meta.notitie) blok.notitie = meta.notitie;
+      if (blok.naam.trim()) blokken.push(blok);
     });
     if (sectieNaam) secties.push({ sectie: sectieNaam, blokken: blokken });
   });
@@ -374,9 +437,13 @@ function createBlokEl(blok) {
     if (confirm('Blok verwijderen?')) item.remove();
   };
 
+  var statusBadge = document.createElement('span');
+  statusBadge.className = 'status-badge status-' + (blok.status || 'handmatig');
+  statusBadge.textContent = statusLabel(blok.status);
   blokHeader.appendChild(blokChevron);
   blokHeader.appendChild(naamPreview);
   blokHeader.appendChild(basisPreview);
+  blokHeader.appendChild(statusBadge);
   blokHeader.appendChild(delBtn);
 
   // --- Blok body (parameters) ---
@@ -428,10 +495,23 @@ function createBlokEl(blok) {
   var paramsArea = document.createElement('textarea');
   paramsArea.className = 'textarea-input';
   paramsArea.setAttribute('data-veld', 'params');
-  paramsArea.value = blok.parameters || '';
-  paramsArea.placeholder = 'bijv. Drive (0-100%), Blend (0-100%)';
+  paramsArea.value = Catalogus.formatParameters(blok.parameters || '');
+  paramsArea.placeholder = 'bijv. Drive (0-100%), Blend (0-100%), Grunt (Off/Fat/Raw), Bright (On/Off)';
+  var chips = document.createElement('div');
+  chips.className = 'param-chips';
+  function updateChips() { chips.innerHTML = paramChipsHtml(Catalogus.parseParameterTekst(paramsArea.value)); }
+  paramsArea.oninput = updateChips;
+  updateChips();
   paramsGroup.appendChild(paramsLabel);
   paramsGroup.appendChild(paramsArea);
+  paramsGroup.appendChild(chips);
+
+  // Herkomst bewaren; handmatig aangepaste parameters worden "handmatig"
+  item._meta = { status: blok.status || 'handmatig', bron: blok.bron || null, notitie: blok.notitie || '', origineel: paramsArea.value };
+  var herkomst = document.createElement('div');
+  herkomst.className = 'blok-herkomst';
+  herkomst.innerHTML = herkomstHtml(blok);
+  blokBody.appendChild(herkomst);
 
   blokBody.appendChild(row);
   blokBody.appendChild(paramsGroup);
@@ -450,7 +530,7 @@ function addSectie() {
 
 function addBlok(sectieEl) {
   var body = sectieEl.querySelector('.sectie-body');
-  var newBlok = createBlokEl({ naam: '', basis: '', parameters: '' });
+  var newBlok = createBlokEl({ naam: '', basis: '', parameters: [], status: 'handmatig' });
   newBlok.classList.remove('collapsed'); // nieuw blok direct open
   body.appendChild(newBlok);
   updateSectieCount(sectieEl);
@@ -462,6 +542,219 @@ function showStatus(msg, type) {
   bar.className = 'status-bar ' + type;
   setTimeout(function() { bar.className = 'status-bar'; }, 5000);
 }
+
+// =====================
+// PARAMETERS & HERKOMST
+// =====================
+function statusLabel(s) {
+  return s === 'geverifieerd' ? 'HANDLEIDING' : s === 'onbevestigd' ? 'ONBEVESTIGD' : 'HANDMATIG';
+}
+
+function paramChipsHtml(params) {
+  if (!params.length) return '<span class="param-chip tekst">geen parameters</span>';
+  return params.map(function(p) {
+    var spec = Catalogus.formatSpec(p);
+    var titel = p.type === 'tekst' ? 'Niet herkend als bereik of keuze: Claude krijgt alleen de omschrijving' : p.type;
+    return '<span class="param-chip ' + p.type + '" title="' + esc(titel) + '"><b>' + esc(p.naam) + '</b>' + (spec ? ' ' + esc(spec) : '') + '</span>';
+  }).join('');
+}
+
+function herkomstHtml(blok) {
+  var b = blok.bron;
+  if (!b) return blok.status === 'geverifieerd' ? 'Bron: handleiding' : 'Handmatig ingevoerd (niet gecontroleerd tegen de handleiding)';
+  var delen = [];
+  if (b.type === 'handleiding') delen.push('Handleiding' + (b.kosmos ? ' KosmOS ' + esc(b.kosmos) : '') + (b.pagina ? ', p. ' + esc(b.pagina) : ''));
+  else if (b.type === 'release-notes') delen.push('Release notes' + (b.kosmos ? ' KosmOS ' + esc(b.kosmos) : '') + (b.url && /^https:\/\//.test(b.url) ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener">bron</a>' : ''));
+  if (b.datum) delen.push(esc(b.datum));
+  return 'Bron: ' + delen.join(' · ');
+}
+
+// =====================
+// SYNC MET DARKGLASS
+// =====================
+var syncToestand = null;
+
+function log(tekst, soort) {
+  var el = document.getElementById('syncLog');
+  var r = document.createElement('div');
+  if (soort) r.className = soort;
+  r.textContent = tekst;
+  el.appendChild(r);
+  el.scrollTop = el.scrollHeight;
+}
+
+function dollar(k) { return k && k.dollar ? ' ($' + k.dollar.toFixed(2) + ')' : ''; }
+
+function zetKnoppen(bezig) {
+  ['btnCheck', 'btnHandleiding'].forEach(function(id) { document.getElementById(id).disabled = bezig; });
+  document.getElementById('pdfInput').disabled = bezig;
+}
+
+function laadSync() {
+  return apiJson('/api/blocks-sync').then(function(d) {
+    syncToestand = d;
+    var s = d.status || {};
+    var info = ['Catalogus: KosmOS ' + esc(d.meta.kosmos || '?') + (d.meta.bijgewerkt ? ' · bijgewerkt ' + esc(new Date(d.meta.bijgewerkt).toLocaleDateString('nl-NL')) : '')];
+    if (s.releaseNotes && s.releaseNotes.versie) info.push('Nieuwste KosmOS volgens release notes: ' + esc(s.releaseNotes.versie) + (s.releaseNotes.datum ? ' (' + esc(s.releaseNotes.datum) + ')' : ''));
+    if (s.laatsteCheck) info.push('Laatst gecontroleerd: ' + esc(new Date(s.laatsteCheck).toLocaleString('nl-NL')));
+    if (s.handleidingGewijzigd) info.push('<span style="color:#ffb347">De handleiding is gewijzigd sinds de vorige keer. Klik LEES HANDLEIDING.</span>');
+    if (s.handleidingNooitGelezen) info.push('De handleiding is nog nooit uitgelezen. Klik LEES HANDLEIDING om alle parameters te controleren (kost ongeveer $2–5 aan API-gebruik).');
+    document.getElementById('syncInfo').innerHTML = info.join('<br>');
+    document.getElementById('updateBadge').style.display = d.updateBeschikbaar ? '' : 'none';
+    document.getElementById('syncPanel').classList.toggle('update', !!d.updateBeschikbaar);
+    var url = document.getElementById('syncUrl');
+    if (!url.value) url.value = (s.handleiding && s.handleiding.url) || d.handleidingUrl;
+    renderVoorstellen(d.voorstellen || []);
+  }).catch(function(e) {
+    document.getElementById('syncInfo').textContent = 'Sync niet beschikbaar: ' + e.message;
+  });
+}
+
+function syncCheck() {
+  zetKnoppen(true);
+  log('Controleren of de handleiding gewijzigd is en zoeken naar nieuwe KosmOS-blokken (web search)...');
+  apiJson('/api/blocks-sync', { json: { actie: 'check', url: document.getElementById('syncUrl').value.trim(), metReleaseNotes: true } })
+    .then(function(d) {
+      var r = d.releaseNotes || {};
+      var nieuw = (r.voorstellen || []).filter(function(v) { return v.bronSoort === 'releasenotes'; }).length;
+      log('Nieuwste KosmOS: ' + ((r.rapport && r.rapport.nieuwste_versie) || '?') + ' · ' + nieuw + ' nieuwe blokken gevonden' + dollar(r.kosten), 'ok');
+      if (d.handleidingFout) log('Handleiding niet gecontroleerd: ' + d.handleidingFout, 'fout');
+      if (d.status && d.status.handleidingGewijzigd) log('De handleiding is gewijzigd: klik LEES HANDLEIDING voor de exacte parameters.', 'ok');
+    })
+    .catch(function(e) { log('Mislukt: ' + e.message, 'fout'); })
+    .then(function() { zetKnoppen(false); return laadSync(); });
+}
+
+function syncHandleiding() {
+  var url = document.getElementById('syncUrl').value.trim();
+  if (!/^https:\/\//.test(url)) { log('Vul een https-URL naar de PDF in.', 'fout'); return; }
+  draaiExtractie({ actie: 'inventaris', url: url });
+}
+
+function syncUpload(input) {
+  var f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  if (f.size > 3.2 * 1024 * 1024) { log('Dit bestand is te groot om te uploaden (max. 3,2 MB). Gebruik de URL van de PDF.', 'fout'); return; }
+  var reader = new FileReader();
+  reader.onload = function() {
+    draaiExtractie({ actie: 'inventaris', base64: String(reader.result).split(',')[1] });
+  };
+  reader.readAsDataURL(f);
+}
+
+// Inventaris → per groep uitlezen → vergelijken. Elke stap is een aparte aanroep.
+function draaiExtractie(start) {
+  zetKnoppen(true);
+  var totaal = 0;
+  log('Handleiding ophalen en inventaris maken... (dit duurt 1–3 minuten)');
+  apiJson('/api/blocks-sync', { json: start })
+    .then(function(d) {
+      var n = d.inventaris.secties.reduce(function(a, s) { return a + s.blokken.length; }, 0);
+      totaal += (d.kosten && d.kosten.dollar) || 0;
+      log('Inventaris: KosmOS ' + d.inventaris.kosmos + ', ' + d.inventaris.secties.length + ' secties, ' + n + ' blokken' + dollar(d.kosten), 'ok');
+      return d.batches.reduce(function(p, batch) {
+        return p.then(function() {
+          log(batch.sectie + ': ' + batch.blokken.join(', ') + '...');
+          return apiJson('/api/blocks-sync', { json: { actie: 'sectie', batch: batch.id } })
+            .then(function(r) { totaal += (r.kosten && r.kosten.dollar) || 0; log('✓ ' + batch.sectie + ': ' + r.blokken.length + ' blokken uitgelezen' + dollar(r.kosten), 'ok'); })
+            .catch(function(e) { log('✗ ' + batch.sectie + ': ' + e.message + ' (sla over)', 'fout'); });
+        });
+      }, Promise.resolve());
+    })
+    .then(function() { return apiJson('/api/blocks-sync', { json: { actie: 'vergelijk' } }); })
+    .then(function(d) {
+      log('Vergeleken met de catalogus: ' + d.voorstellen.length + ' voorstellen' + (d.volledig ? '' : ' (niet alle groepen gelukt; ontbrekende blokken worden niet gemeld)') + ' · totaal $' + totaal.toFixed(2), 'ok');
+    })
+    .catch(function(e) { log('Mislukt: ' + e.message, 'fout'); })
+    .then(function() { zetKnoppen(false); return laadSync(); });
+}
+
+function verschilHtml(v) {
+  if (v.soort === 'nieuw') return '<div class="verschil">' + esc(v.blok.basis || '') + '</div>';
+  if (v.soort === 'ontbreekt') return '<div class="verschil">Staat in je catalogus maar niet in de handleiding. Verwijderen of behouden?</div>';
+  if (!v.verschillen || !v.verschillen.length) return '<div class="verschil">Parameters gelijk; het blok wordt als gecontroleerd gemarkeerd.</div>';
+  return v.verschillen.map(function(x) {
+    if (x.soort === 'nieuw') return '<div class="verschil">+ ' + esc(x.parameter) + ' <ins>' + esc(x.nieuw) + '</ins></div>';
+    if (x.soort === 'vervalt') return '<div class="verschil">− ' + esc(x.parameter) + ' <del>' + esc(x.oud) + '</del></div>';
+    return '<div class="verschil">~ ' + esc(x.parameter) + ': <del>' + esc(x.oud) + '</del> → <ins>' + esc(x.nieuw) + '</ins></div>';
+  }).join('');
+}
+
+function renderVoorstellen(lijst) {
+  var el = document.getElementById('voorstellen');
+  if (!lijst.length) { el.innerHTML = ''; return; }
+  var groepen = [['nieuw', 'NIEUWE BLOKKEN'], ['gewijzigd', 'GEWIJZIGDE PARAMETERS'], ['ontbreekt', 'NIET IN DE HANDLEIDING']];
+  var html = '<div class="sync-acties"><span class="sync-titel" style="color:var(--text)">' + lijst.length + ' VOORSTELLEN</span>'
+    + '<button class="btn btn-sm btn-accent" onclick="besluitAlles(\'nieuw\')">ALLE NIEUWE OVERNEMEN</button>'
+    + '<button class="btn btn-sm btn-accent" onclick="besluitAlles(\'gewijzigd\')">ALLE WIJZIGINGEN OVERNEMEN</button></div>';
+  groepen.forEach(function(g) {
+    var items = lijst.filter(function(v) { return v.soort === g[0]; });
+    if (!items.length) return;
+    html += '<div class="groep-titel">' + g[1] + ' (' + items.length + ')</div>';
+    items.forEach(function(v) {
+      var k = esc(v.key);
+      var knoppen = v.soort === 'ontbreekt'
+        ? '<button class="btn btn-sm btn-danger" data-key="' + k + '" data-besluit="verwijderen">VERWIJDEREN</button><button class="btn btn-sm btn-secondary" data-key="' + k + '" data-besluit="behouden">BEHOUDEN</button>'
+        : '<button class="btn btn-sm btn-primary" data-key="' + k + '" data-besluit="overnemen">OVERNEMEN</button><button class="btn btn-sm btn-secondary" data-key="' + k + '" data-besluit="bewerk">BEWERK</button><button class="btn btn-sm btn-secondary" data-key="' + k + '" data-besluit="negeren">NEGEREN</button>';
+      html += '<div class="voorstel" data-voorstel="' + k + '">'
+        + '<div class="voorstel-kop"><span class="voorstel-soort soort-' + v.soort + '">' + v.soort.toUpperCase() + '</span>'
+        + '<span class="voorstel-naam">' + esc(v.blok.naam) + '</span><span class="voorstel-sectie">' + esc(v.sectie) + '</span>'
+        + '<span class="status-badge status-' + esc(v.blok.status) + '">' + statusLabel(v.blok.status) + '</span>'
+        + '<div class="voorstel-knoppen">' + knoppen + '</div></div>'
+        + verschilHtml(v)
+        + (v.soort !== 'ontbreekt' ? '<div class="param-chips">' + paramChipsHtml(v.blok.parameters || []) + '</div>' : '')
+        + '<div class="blok-herkomst">' + herkomstHtml(v.blok) + '</div>'
+        + '</div>';
+    });
+  });
+  el.innerHTML = html;
+}
+
+document.getElementById('voorstellen').addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-besluit]');
+  if (!btn) return;
+  var key = btn.dataset.key, besluit = btn.dataset.besluit;
+  var v = (syncToestand.voorstellen || []).find(function(x) { return x.key === key; });
+  if (!v) return;
+  if (besluit === 'bewerk') return bewerkVoorstel(v, btn.closest('.voorstel'));
+  var item = { key: key, besluit: besluit };
+  var bewerkt = btn.closest('.voorstel').querySelector('textarea');
+  if (bewerkt && besluit === 'overnemen') {
+    item.blok = Object.assign({}, v.blok, { parameters: Catalogus.parseParameterTekst(bewerkt.value), status: 'handmatig' });
+  }
+  pasBesluitenToe([item]);
+});
+
+function bewerkVoorstel(v, el) {
+  if (el.querySelector('textarea')) return;
+  var ta = document.createElement('textarea');
+  ta.className = 'textarea-input';
+  ta.value = Catalogus.formatParameters(v.blok.parameters || []);
+  var chips = el.querySelector('.param-chips');
+  ta.oninput = function() { chips.innerHTML = paramChipsHtml(Catalogus.parseParameterTekst(ta.value)); };
+  el.insertBefore(ta, chips);
+  ta.focus();
+}
+
+function besluitAlles(soort) {
+  var items = (syncToestand.voorstellen || []).filter(function(v) { return v.soort === soort; })
+    .map(function(v) { return { key: v.key, besluit: 'overnemen' }; });
+  if (items.length && confirm(items.length + ' voorstellen overnemen?')) pasBesluitenToe(items);
+}
+
+function pasBesluitenToe(besluiten) {
+  apiJson('/api/blocks-sync', { json: { actie: 'toepassen', besluiten: besluiten } })
+    .then(function(d) {
+      blocksData = d.blocks;
+      renderAll();
+      showStatus('Catalogus bijgewerkt. Nog ' + d.open + ' voorstellen open.', 'ok');
+      return laadSync();
+    })
+    .catch(function(e) { showStatus('Toepassen mislukt: ' + e.message, 'err'); });
+}
+
+laadSync();
 
 loadBlocks();
 </script>
