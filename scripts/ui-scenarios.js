@@ -191,3 +191,21 @@ async function extrasStap4(page, basis, stap) {
 }
 
 module.exports.push(extrasStap4);
+
+async function navigatieEnBeheer(page, basis, stap) {
+  await page.goto(basis + '/');
+  stap('knoppen BLOKKEN en BEHEER in de hoofdapp', await page.locator('.top-nav a[href="/blocks.html"]').isVisible() && await page.locator('.top-nav a[href="/beheer.html"]').isVisible());
+  await page.click('.top-nav a[href="/beheer.html"]');
+  await page.waitForSelector('.tegel');
+  stap('beheerpagina toont de tegels', await page.locator('.tegel').count() === 4);
+  await page.waitForFunction(function() { return /blokken · KosmOS/.test(document.getElementById('infoBlokken').textContent); });
+  stap('blokken-tegel toont aantal en versie', true);
+  await page.click('#tegelBlokken');
+  await page.waitForSelector('#syncPanel');
+  stap('BLOKKEN-tegel opent de blok-editor', true);
+  await page.click('a[href="/beheer.html"]');
+  await page.waitForSelector('.tegel');
+  stap('vanuit de blok-editor terug naar beheer', true);
+}
+
+module.exports.push(navigatieEnBeheer);

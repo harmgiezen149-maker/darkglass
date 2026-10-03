@@ -258,6 +258,7 @@ Promise.all([laadRig(), laadCatalogus()]).then(function() {
   if (typeof laadBibliotheek === 'function') laadBibliotheek();
 });
 checkApiStatus();
+checkBlokUpdates();
 setInterval(checkApiStatus, 180000);
 try {
   if (!sessionStorage.getItem('dg_visit_tracked')) { trackEvent('visit'); sessionStorage.setItem('dg_visit_tracked', '1'); }

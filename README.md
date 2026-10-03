@@ -7,6 +7,7 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 ```
 /
 ├── index.html          Hoofdpagina (analyse, chat, bibliotheek)
+├── beheer.html         Beheer: inloggen/uitloggen en snelkoppelingen naar blokken, rig, setlists, stats
 ├── blocks.html         Blok-editor + sync met de Darkglass-handleiding
 ├── rig.html            Mijn rig: bassen, uitgang, speelstijl
 ├── setlists.html       Setlists samenstellen

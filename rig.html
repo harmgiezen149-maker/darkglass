@@ -17,12 +17,14 @@
     .melding.ok { color: var(--accent); } .melding.fout { color: var(--accent2); }
     textarea.text-input { min-height: 70px; resize: vertical; }
     @media (max-width: 600px) { .bas-kaart { grid-template-columns: 1fr; } }
+    .header-link { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.2em; color: var(--text-dim); text-decoration: none; border: 1px solid var(--border); padding: 0.4rem 0.8rem; border-radius: 4px; }
+    .header-link:hover { color: var(--accent); border-color: var(--accent); }
   </style>
 </head>
 <body>
   <header>
     <div class="logo-group"><div class="logo-mark">DG</div><div class="logo-text"><span class="logo-title">ANAGRAM</span><span class="logo-sub">MIJN RIG</span></div></div>
-    <a href="/" class="header-link" style="font-family:var(--font-a);font-size:0.65rem;letter-spacing:0.2em;color:var(--text-dim);text-decoration:none">&larr; APP</a>
+    <div style="display:flex;gap:0.5rem;align-items:center"><a href="/beheer.html" class="header-link">&#9881; BEHEER</a><a href="/" class="header-link">&larr; APP</a></div>
   </header>
   <main>
     <section class="panel">

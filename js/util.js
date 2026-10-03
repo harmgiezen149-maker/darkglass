@@ -76,3 +76,18 @@ function loadingHtml(tekst, log) {
 function datumTekst(d) {
   return (d ? new Date(d) : new Date()).toLocaleDateString(currentLang === 'en' ? 'en-GB' : 'nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
+
+// Toont "UPDATE" op de BLOKKEN-knop als er nieuwe blokken klaarstaan.
+// Alleen voor beheerders, en zonder loginvenster (gewone fetch).
+function checkBlokUpdates() {
+  var badge = document.getElementById('navUpdate');
+  if (!badge) return;
+  fetch('/api/login', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(s) {
+      if (!s.admin) return null;
+      return fetch('/api/blocks-sync', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : null; });
+    })
+    .then(function(d) { badge.hidden = !(d && d.updateBeschikbaar); })
+    .catch(function() {});
+}

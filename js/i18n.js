@@ -4,6 +4,7 @@ var currentLang = (function() { try { return localStorage.getItem('dg_lang') || 
 var I18N = {
   nl: {
     navBlokken: 'BLOKKEN',
+    navBeheer: 'BEHEER',
     // stap 3
     serieel: 'SERIEEL',
     toneAnalyse: 'TONE ANALYSE',
@@ -83,6 +84,7 @@ var I18N = {
   },
   en: {
     navBlokken: 'BLOCKS',
+    navBeheer: 'ADMIN',
     // step 3
     serieel: 'SERIAL',
     toneAnalyse: 'TONE ANALYSIS',
