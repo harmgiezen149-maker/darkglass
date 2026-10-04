@@ -7,11 +7,11 @@
 
   // Prijzen in dollars per miljoen tokens (cache-schrijven = 1,25x input, 5 minuten).
   var MODELLEN = [
-    { id: 'claude-opus-5-5', naam: 'Opus 5.5', kort: 'opus', prijs: { input: 4.00, output: 20.00, cacheSchrijven: 5.00, cacheLezen: 0.20 } },
-    { id: 'claude-sonnet-5-5', naam: 'Sonnet 5.5', kort: 'sonnet', prijs: { input: 2.00, output: 10.00, cacheSchrijven: 2.50, cacheLezen: 0.20 } }
+    { id: 'claude-sonnet-5-5', naam: 'Sonnet 5.5', kort: 'sonnet', prijs: { input: 2.00, output: 10.00, cacheSchrijven: 2.50, cacheLezen: 0.20 } },
+    { id: 'claude-opus-5-5', naam: 'Opus 5.5', kort: 'opus', prijs: { input: 4.00, output: 20.00, cacheSchrijven: 5.00, cacheLezen: 0.20 } }
   ];
   var EFFORTS = ['high', 'medium'];
-  var STANDAARD = { model: 'claude-opus-5-5', effort: 'high' };
+  var STANDAARD = { model: 'claude-sonnet-5-5', effort: 'high' };
 
   function model(id) {
     return MODELLEN.find(function(m) { return m.id === id; }) || null;
