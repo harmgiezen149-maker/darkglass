@@ -224,7 +224,19 @@ async function aiModelKeuze(page, basis, stap) {
   await page.click('#analyzeBtn');
   await page.waitForSelector('#chatPanel:not(.hidden)', { timeout: 15000 });
   stap('resultaat noemt het gebruikte model', /Sonnet 5\.5 · Medium/.test(await page.locator('#chatMessages').innerText()));
-  await page.selectOption('#aiKeuze', 'claude-opus-5-5|high');
+  await page.selectOption('#aiKeuze', 'claude-sonnet-5-5|high');
 }
 
 module.exports.push(aiModelKeuze);
+
+async function standaardModel(page, basis, stap) {
+  var ctx = await page.context().browser().newContext();
+  var schoon = await ctx.newPage();
+  await schoon.goto(basis + '/');
+  await schoon.waitForSelector('#aiKeuze option', { state: 'attached' });
+  stap('zonder eerdere keuze staat Sonnet 5.5 · High geselecteerd', await schoon.inputValue('#aiKeuze') === 'claude-sonnet-5-5|high'
+    && /Sonnet 5\.5 · High \((standaard|default)\)/.test(await schoon.locator('#aiKeuze option').first().innerText()));
+  await ctx.close();
+}
+
+module.exports.push(standaardModel);

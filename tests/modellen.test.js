@@ -5,6 +5,12 @@ var Modellen = require('../shared/modellen');
 var claude = require('../api/_lib/claude');
 var fake = require('../scripts/fake-claude');
 
+test('Sonnet 5.5 · High is de standaard en staat bovenaan', function() {
+  assert.deepStrictEqual(Modellen.STANDAARD, { model: 'claude-sonnet-5-5', effort: 'high' });
+  assert.strictEqual(Modellen.opties()[0].waarde, 'claude-sonnet-5-5|high');
+  assert.deepStrictEqual(claude.keuze(), { model: 'claude-sonnet-5-5', effort: 'high' });
+});
+
 test('alleen toegestane modellen en efforts; anders de standaard', function() {
   assert.deepStrictEqual(Modellen.kies('claude-sonnet-5-5', 'medium'), { model: 'claude-sonnet-5-5', effort: 'medium' });
   assert.deepStrictEqual(Modellen.kies('gpt-9', 'max'), Modellen.STANDAARD);
@@ -36,7 +42,7 @@ test('analyse met Sonnet 5.5 medium gebruikt dat model in elke stap', async func
     assert.strictEqual(fake.gezien[1].effort, 'medium', 'ontwerp');
     fake.gezien.length = 0;
     await h.roep(require('../api/analyse'), { method: 'POST', body: { artist: 'Muse', song: 'Hysteria', bassen: ['spector'], model: 'onbekend', effort: 'max' } });
-    assert.ok(fake.gezien.every(function(g) { return g.model === 'claude-opus-5-5'; }), 'onbekend model valt terug op Opus');
+    assert.ok(fake.gezien.every(function(g) { return g.model === 'claude-sonnet-5-5'; }), 'onbekend model valt terug op de standaard (Sonnet 5.5)');
   } finally {
     global.fetch = echteFetch;
   }

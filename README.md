@@ -92,12 +92,12 @@ In het setup-paneel kies je onder **AI-MODEL** welk model en welke effort de ana
 
 | Keuze | Wanneer |
 |---|---|
-| Opus 5.5 · High *(standaard)* | Beste kwaliteit en het grondigste onderzoek, langzaamst en duurst |
-| Opus 5.5 · Medium | Sterke kwaliteit, sneller en goedkoper |
-| Sonnet 5.5 · High | Grondig, ongeveer half zo duur als Opus |
+| Sonnet 5.5 · High *(standaard)* | Grondig, ongeveer half zo duur als Opus |
 | Sonnet 5.5 · Medium | Snelst en goedkoopst, handig voor snelle ideeën en fine-tunen |
+| Opus 5.5 · High | Beste kwaliteit en het grondigste onderzoek, langzaamst en duurst |
+| Opus 5.5 · Medium | Sterke kwaliteit, sneller en goedkoper dan Opus High |
 
-De keuze wordt per browser onthouden. De server staat alleen deze vier combinaties toe (`shared/modellen.js`). Bij elke preset wordt opgeslagen welk model hem maakte, en de stats tonen de kosten per model.
+De keuze wordt per browser onthouden. De server staat alleen deze vier combinaties toe (`shared/modellen.js`). Ook de blok-sync gebruikt standaard Sonnet 5.5, tenzij je `CLAUDE_MODEL` instelt. Bij elke preset wordt opgeslagen welk model hem maakte, en de stats tonen de kosten per model.
 
 ## Blokken synchroniseren met Darkglass
 
