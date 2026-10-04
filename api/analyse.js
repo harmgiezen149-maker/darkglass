@@ -7,7 +7,7 @@ var ontwerp = require('./_lib/ontwerp');
 
 function kort(s, n) { return String(s || '').trim().slice(0, n); }
 
-// POST { artist, song, bassen: [ids], extra, taal, vers } → Server-Sent Events:
+// POST { artist, song, bassen: [ids], extra, taal, vers, model, effort } → Server-Sent Events:
 //   data: {"fase": "onderzoek"|"ontwerp"|"controle", "tekst": "..."}   voortgang
 //   data: {"onderzoek": {...}}                                        toneprofiel zodra het klaar is
 //   data: {"resultaat": {artiest, song, scenes, onderzoek, kosten}}
@@ -30,12 +30,13 @@ module.exports = async function handler(req, res) {
       artist: artist, song: song,
       bassen: Array.isArray(b.bassen) ? b.bassen.slice(0, 3).map(String) : [],
       extra: kort(b.extra, 1500), taal: b.taal === 'en' ? 'en' : 'nl', vers: b.vers === true,
+      model: b.model, effort: b.effort,
       onStatus: function(v) {
         if (v.onderzoek) s.zend({ onderzoek: v.onderzoek });
         if (v.tekst) s.zend({ fase: v.fase, tekst: v.tekst });
       }
     });
-    await claude.registreerKosten('analyse', r.kosten);
+    await claude.registreerKosten('analyse', r.kosten, r.ai.model);
     s.zend({ resultaat: r });
   } catch (e) {
     console.error('Analyse mislukt:', e);

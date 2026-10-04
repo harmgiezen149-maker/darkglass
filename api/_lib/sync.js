@@ -228,7 +228,7 @@ async function inventaris(bron) {
   inv.aangemaakt = new Date().toISOString();
   inv.fileId = b.bestand.fileId;
   await redis.pipeline([['SET', K.inventaris, JSON.stringify(inv)], ['DEL', K.extractie]]);
-  await claude.registreerKosten('sync', msg.kosten);
+  await claude.registreerKosten('sync', msg.kosten, claude.MODEL);
   return { inventaris: inv, batches: batches(inv), kosten: msg.kosten };
 }
 
@@ -272,7 +272,7 @@ async function leesBatch(batchId) {
     });
   }).filter(Boolean);
   await redis.cmd(['HSET', K.extractie, batchId, JSON.stringify({ sectie: batch.sectie, blokken: lijst })]);
-  await claude.registreerKosten('sync', msg.kosten);
+  await claude.registreerKosten('sync', msg.kosten, claude.MODEL);
   return { batch: batch, blokken: lijst, kosten: msg.kosten };
 }
 
@@ -339,7 +339,7 @@ async function releaseNotes() {
     }]
   });
   var data = claude.toolInput(msg, 'rapporteer_kosmos');
-  await claude.registreerKosten('sync', msg.kosten);
+  await claude.registreerKosten('sync', msg.kosten, claude.MODEL);
   if (!data) throw new Error('Claude gaf geen rapport terug; probeer het opnieuw.');
 
   var bron = [];

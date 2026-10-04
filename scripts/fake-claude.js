@@ -46,6 +46,7 @@ function inhoud(params) {
 }
 
 function maakBericht(params) {
+  module.exports.gezien.push({ model: params.model, effort: params.output_config && params.output_config.effort });
   var content = inhoud(params);
   var tekst = content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
   return {
@@ -91,7 +92,8 @@ module.exports = {
   beta: { messages: messages },
   files: { upload: function() { return Promise.resolve({ id: 'file_fake' }); } },
   registreer: registreer,
-  _laatsteParams: null
+  _laatsteParams: null,
+  gezien: []
 };
 
 // ---------- sync (stap 2) ----------

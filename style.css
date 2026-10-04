@@ -404,3 +404,7 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 }
 .saved-action-btn[data-actie="print"] { background: transparent; color: var(--text-dim); border: 1px solid var(--border-bright); }
 .saved-action-btn[data-actie="print"]:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ===== AI-model keuze ===== */
+.ai-select { cursor: pointer; }
+.ai-hint { font-size: 0.66rem; color: var(--text-dimmer); margin-top: 0.4rem; line-height: 1.5; }

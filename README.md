@@ -49,7 +49,7 @@ AI-powered tool die op basis van artiest + song een preset-plan genereert voor d
 | `CRON_SECRET` | *(aanbevolen)* Geheim voor de wekelijkse Vercel Cron die controleert of er nieuwe blokken of een nieuwe handleiding zijn. Zonder dit geheim draait de cron niet. |
 | `HANDLEIDING_URL` | *(optioneel)* Andere URL voor de Anagram-handleiding (PDF). |
 | `SYNC_CRON_RELEASENOTES` | *(optioneel)* `0` = de wekelijkse cron zoekt niet via web search naar release notes (scheelt ca. $0,10 per week). |
-| `CLAUDE_MODEL` | *(optioneel)* Ander model dan `claude-opus-5-5`. |
+| `CLAUDE_MODEL` | *(optioneel)* Standaardmodel voor de blok-sync. In de app kies je het model zelf (zie hieronder). |
 | `CLAUDE_GEEN_FALLBACK` | *(optioneel)* `1` schakelt de server-side fallback uit (bij een weigering door de veiligheidsfilters probeert de API anders zelf een passend model). |
 
 De functies `analyse`, `chat` en `blocks-sync` mogen tot 300 seconden draaien (`vercel.json`). Dat werkt met Vercel *fluid compute*, de standaard voor nieuwe projecten. Op een ouder Hobby-project zonder fluid compute geldt een maximum van 60 s: zet fluid compute dan aan in de projectinstellingen.
@@ -85,6 +85,19 @@ git push
 3. **Controle**: de server controleert elke parameter en waarde tegen de catalogus, inclusief bereik, eenheid en keuzes, en ook de signaalketen. Bij fouten repareert Claude de preset één keer. Wat daarna nog niet klopt, wordt automatisch begrensd of weggehaald. Dat zie je onder *Controle tegen de catalogus*.
 
 Fine-tunen en vertalen werken op dezelfde JSON. Bij vertalen worden alleen de tekstvelden vertaald, de waarden niet. Oude presets in tekstformaat worden bij het laden automatisch omgezet.
+
+## AI-model kiezen
+
+In het setup-paneel kies je onder **AI-MODEL** welk model en welke effort de analyse, het fine-tunen en het vertalen gebruiken:
+
+| Keuze | Wanneer |
+|---|---|
+| Opus 5.5 · High *(standaard)* | Beste kwaliteit en het grondigste onderzoek, langzaamst en duurst |
+| Opus 5.5 · Medium | Sterke kwaliteit, sneller en goedkoper |
+| Sonnet 5.5 · High | Grondig, ongeveer half zo duur als Opus |
+| Sonnet 5.5 · Medium | Snelst en goedkoopst, handig voor snelle ideeën en fine-tunen |
+
+De keuze wordt per browser onthouden. De server staat alleen deze vier combinaties toe (`shared/modellen.js`). Bij elke preset wordt opgeslagen welk model hem maakte, en de stats tonen de kosten per model.
 
 ## Blokken synchroniseren met Darkglass
 

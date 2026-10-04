@@ -2,6 +2,8 @@ var http = require('./_lib/http');
 var auth = require('./_lib/auth');
 var redis = require('./_lib/redis');
 
+var Modellen = require('../shared/modellen');
+
 var EVENTS = ['analyse', 'save', 'visit', 'chat', 'vertaal', 'feedback'];
 
 function dagKey(d) {
@@ -46,9 +48,11 @@ module.exports = async function handler(req, res) {
       'stats:kosten:micro:total', 'stats:tokens:total', 'stats:zoekopdrachten:total',
       'stats:kosten:micro:analyse', 'stats:kosten:micro:chat', 'stats:kosten:micro:vertaal', 'stats:kosten:micro:sync',
       'stats:feedback:total'];
+    var modelIds = Modellen.MODELLEN.map(function(m) { return m.id; });
     var keys = vast
       .concat(dagen.map(function(k) { return 'stats:analyse:day:' + k; }))
-      .concat(dagen.map(function(k) { return 'stats:kosten:micro:day:' + k; }));
+      .concat(dagen.map(function(k) { return 'stats:kosten:micro:day:' + k; }))
+      .concat(modelIds.map(function(id) { return 'stats:kosten:micro:model:' + id; }));
     var w = await redis.cmd(['MGET'].concat(keys));
     var n = function(i) { return parseInt(w[i] || '0', 10); };
     var dollar = function(i) { return n(i) / 1e6; };
@@ -63,7 +67,10 @@ module.exports = async function handler(req, res) {
       kosten: {
         totaal: dollar(7), tokens: n(8), zoekopdrachten: n(9),
         perSoort: { analyse: dollar(10), chat: dollar(11), vertaal: dollar(12), sync: dollar(13) },
-        perAnalyse: n(0) ? dollar(10) / n(0) : 0
+        perAnalyse: n(0) ? dollar(10) / n(0) : 0,
+        perModel: Modellen.MODELLEN.map(function(m, j) {
+          return { id: m.id, naam: m.naam, dollar: dollar(vast.length + 2 * dagen.length + j) };
+        })
       },
       dagen: dagen.map(function(k, j) {
         return { datum: k, aantal: n(vast.length + j), kosten: dollar(vast.length + dagen.length + j) };

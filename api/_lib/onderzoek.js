@@ -167,7 +167,7 @@ function schoonProfiel(p) {
   return p;
 }
 
-// Voert het onderzoek uit. opties: { taal, extra, vers, onStatus }
+// Voert het onderzoek uit. opties: { taal, extra, vers, model, effort, onStatus }
 async function onderzoek(artist, song, opties) {
   opties = opties || {};
   if (!opties.vers) {
@@ -180,10 +180,10 @@ async function onderzoek(artist, song, opties) {
 
   var taal = opties.taal === 'en' ? 'Write all text fields in English.' : 'Schrijf alle tekstvelden in het Nederlands.';
   var params = {
-    model: claude.MODEL,
+    model: opties.model || claude.MODEL,
     max_tokens: 16000,
     thinking: { type: 'adaptive' },
-    output_config: { effort: 'medium' },
+    output_config: { effort: opties.effort || 'medium' },
     system: 'Je bent een onderzoeker voor bassounds. Je zoekt uit hoe de bas op een specifieke opname klinkt en waardoor: instrument, pickups, snaren, versterker/DI, pedalen, speeltechniek en productie. '
       + 'Zoek gericht (maximaal ongeveer 5 zoekopdrachten), bijvoorbeeld op Equipboard, in interviews (Bass Player, Premier Guitar, No Treble), rig rundowns en betrouwbare forumdraadjes. '
       + 'Lees de meest relevante pagina\'s met web_fetch. Onderscheid feiten met een bron van inschattingen op gehoor of op basis van het genre, en geef dat aan met de zekerheid (hoog = bevestigd door een bron over deze opname of periode, middel = waarschijnlijk, laag = inschatting). '

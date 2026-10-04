@@ -209,3 +209,22 @@ async function navigatieEnBeheer(page, basis, stap) {
 }
 
 module.exports.push(navigatieEnBeheer);
+
+async function aiModelKeuze(page, basis, stap) {
+  await page.goto(basis + '/');
+  await page.waitForSelector('#aiKeuze option', { state: 'attached' });
+  stap('keuzelijst met 4 combinaties van model en effort', await page.locator('#aiKeuze option').count() === 4);
+  await page.selectOption('#aiKeuze', 'claude-sonnet-5-5|medium');
+  stap('uitleg past zich aan de keuze aan', /goedkoopst|cheapest/i.test(await page.locator('#aiHint').innerText()));
+  await page.reload();
+  await page.waitForSelector('#aiKeuze option', { state: 'attached' });
+  stap('keuze blijft bewaard na herladen', await page.inputValue('#aiKeuze') === 'claude-sonnet-5-5|medium');
+  await page.fill('#artistInput', 'Muse');
+  await page.fill('#songInput', 'Hysteria');
+  await page.click('#analyzeBtn');
+  await page.waitForSelector('#chatPanel:not(.hidden)', { timeout: 15000 });
+  stap('resultaat noemt het gebruikte model', /Sonnet 5\.5 · Medium/.test(await page.locator('#chatMessages').innerText()));
+  await page.selectOption('#aiKeuze', 'claude-opus-5-5|high');
+}
+
+module.exports.push(aiModelKeuze);

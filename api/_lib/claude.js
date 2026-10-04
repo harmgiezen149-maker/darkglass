@@ -1,11 +1,14 @@
 // Gedeelde Claude-client, modelkeuze en kostenregistratie.
 var Anthropic = require('@anthropic-ai/sdk');
 var redis = require('./redis');
+var Modellen = require('../../shared/modellen');
 
-var MODEL = process.env.CLAUDE_MODEL || 'claude-opus-5-5';
+// Standaardmodel (o.a. voor de blok-sync). In de app kies je model en effort
+// zelf uit shared/modellen.js; de server staat alleen die combinaties toe.
+var MODEL = process.env.CLAUDE_MODEL || Modellen.STANDAARD.model;
 
-// Prijzen in dollars per miljoen tokens (Claude Opus 5.5). Cache-schrijven is
-// 1,25x de inputprijs. Web search wordt per zoekopdracht afgerekend.
+// Terugvalprijzen (Claude Opus 5.5) voor modellen die niet in shared/modellen.js
+// staan. Web search wordt per zoekopdracht afgerekend.
 var PRIJS = {
   input: 4.00,
   output: 20.00,
@@ -48,7 +51,7 @@ async function voltooi(params, opties) {
       for await (var ev of stream) opties.onEvent(ev);
     }
     var msg = await stream.finalMessage();
-    kosten = telOp(kosten, kostenVan(msg.usage));
+    kosten = telOp(kosten, kostenVan(msg.usage, params.model));
     if (msg.stop_reason === 'pause_turn') {
       messages.push({ role: 'assistant', content: msg.content });
       continue;
@@ -77,15 +80,22 @@ function jsonFormaat(schema) {
   return { type: 'json_schema', schema: schema };
 }
 
-function kostenVan(usage) {
+// Keuze van model + effort uit een verzoek, alleen toegestane combinaties.
+function keuze(model, effort) {
+  return Modellen.kies(model, effort, { model: Modellen.model(MODEL) ? MODEL : Modellen.STANDAARD.model, effort: Modellen.STANDAARD.effort });
+}
+
+function kostenVan(usage, model) {
   if (!usage) return { dollar: 0, tokens: 0 };
+  var m = Modellen.model(model);
+  var p = m ? Object.assign({ webSearchPer1000: PRIJS.webSearchPer1000 }, m.prijs) : PRIJS;
   var inp = usage.input_tokens || 0;
   var out = usage.output_tokens || 0;
   var cw = usage.cache_creation_input_tokens || 0;
   var cr = usage.cache_read_input_tokens || 0;
   var zoek = (usage.server_tool_use && usage.server_tool_use.web_search_requests) || 0;
-  var dollar = (inp * PRIJS.input + out * PRIJS.output + cw * PRIJS.cacheSchrijven + cr * PRIJS.cacheLezen) / 1e6
-    + zoek * PRIJS.webSearchPer1000 / 1000;
+  var dollar = (inp * p.input + out * p.output + cw * p.cacheSchrijven + cr * p.cacheLezen) / 1e6
+    + zoek * p.webSearchPer1000 / 1000;
   return { dollar: dollar, tokens: inp + out + cw + cr, input: inp, output: out, cacheSchrijven: cw, cacheLezen: cr, zoekopdrachten: zoek };
 }
 
@@ -102,7 +112,7 @@ function telOp(a, b) {
 }
 
 // Slaat verbruik op voor het stats-dashboard (in micro-dollars, als integer).
-async function registreerKosten(soort, kosten) {
+async function registreerKosten(soort, kosten, model) {
   if (!redis.isGeconfigureerd() || !kosten) return;
   var dag = new Date().toISOString().slice(0, 10);
   var micro = String(Math.round((kosten.dollar || 0) * 1e6));
@@ -114,7 +124,7 @@ async function registreerKosten(soort, kosten) {
       ['INCRBY', 'stats:tokens:total', String(kosten.tokens || 0)],
       ['INCRBY', 'stats:zoekopdrachten:total', String(kosten.zoekopdrachten || 0)],
       ['INCR', 'stats:claude:' + soort]
-    ]);
+    ].concat(Modellen.model(model) ? [['INCRBY', 'stats:kosten:micro:model:' + model, micro]] : []));
   } catch (e) {
     console.error('Kosten registreren mislukt:', e.message);
   }
@@ -122,6 +132,6 @@ async function registreerKosten(soort, kosten) {
 
 module.exports = {
   MODEL: MODEL, PRIJS: PRIJS, client: client, _zetClient: _zetClient, metFallback: metFallback,
-  voltooi: voltooi, jsonUit: jsonUit, toolInput: toolInput, jsonFormaat: jsonFormaat,
+  keuze: keuze, voltooi: voltooi, jsonUit: jsonUit, toolInput: toolInput, jsonFormaat: jsonFormaat,
   kostenVan: kostenVan, telOp: telOp, registreerKosten: registreerKosten, Anthropic: Anthropic
 };
