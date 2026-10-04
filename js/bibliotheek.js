@@ -9,7 +9,7 @@ var filters = { zoek: '', bas: '', beoordeling: '', tag: '' };
 function presetNaarHuidig(p) {
   return {
     artiest: p.artist, song: p.song, scenes: kloon(Legacy.scenesUitPreset(p)), onderzoek: p.onderzoek || null,
-    presetId: p.id, label: p.label || '', gewijzigd: false
+    presetId: p.id, label: p.label || '', gewijzigd: false, ai: p.ai || null
   };
 }
 
@@ -50,6 +50,7 @@ function savePreset() {
     preset.onderzoek = huidig.onderzoek || preset.onderzoek || null;
     preset.bass = basLabel(huidig.scenes);
     preset.bijgewerkt = datumTekst();
+    if (huidig.ai) preset.ai = huidig.ai;
   } else {
     var bestaatAl = Object.keys(presetsCache).some(function(k) {
       return presetsCache[k].artist === huidig.artiest && presetsCache[k].song === huidig.song;
@@ -62,7 +63,7 @@ function savePreset() {
     }
     preset = {
       id: Date.now().toString(), versie: 3, artist: huidig.artiest, song: huidig.song, bass: basLabel(huidig.scenes),
-      scenes: kloon(huidig.scenes), onderzoek: huidig.onderzoek || null, datum: datumTekst(), label: label, tags: [], versies: []
+      scenes: kloon(huidig.scenes), onderzoek: huidig.onderzoek || null, datum: datumTekst(), label: label, tags: [], versies: [], ai: huidig.ai || null
     };
   }
   btn.disabled = true; btn.textContent = t('opslaanBezig');
@@ -161,6 +162,7 @@ function renderBibliotheek() {
     var p = presetsCache[id];
     var n = Legacy.scenesUitPreset(p).length;
     var sub = (p.bass || '').split('(')[0].trim() + ' · ' + (p.bijgewerkt || p.datum || '') + (p.label ? ' · ' + p.label : '');
+    if (p.ai && p.ai.model) sub += ' · ' + Modellen.label(p.ai);
     var score = p.feedback && p.feedback.score;
     var tags = (p.tags || []).map(function(tg) { return '<span class="tag-chip">' + esc(tg) + '</span>'; }).join('');
     return '<div class="saved-item"><div class="saved-item-header"><div>'

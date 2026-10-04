@@ -5,6 +5,12 @@ var I18N = {
   nl: {
     navBlokken: 'BLOKKEN',
     navBeheer: 'BEHEER',
+    aiModel: 'AI-MODEL',
+    standaard: 'standaard',
+    aiHint_opus_high: 'Beste kwaliteit en het grondigste onderzoek. Langzaamst en duurst (ca. 2x Sonnet).',
+    aiHint_opus_medium: 'Sterke kwaliteit, sneller en goedkoper dan High.',
+    aiHint_sonnet_high: 'Grondig en ongeveer half zo duur als Opus. Snel.',
+    aiHint_sonnet_medium: 'Snelst en goedkoopst. Prima voor snelle ideeën en fine-tunen.',
     // stap 3
     serieel: 'SERIEEL',
     toneAnalyse: 'TONE ANALYSE',
@@ -85,6 +91,12 @@ var I18N = {
   en: {
     navBlokken: 'BLOCKS',
     navBeheer: 'ADMIN',
+    aiModel: 'AI MODEL',
+    standaard: 'default',
+    aiHint_opus_high: 'Best quality and the most thorough research. Slowest and most expensive (about 2x Sonnet).',
+    aiHint_opus_medium: 'Strong quality, faster and cheaper than High.',
+    aiHint_sonnet_high: 'Thorough and about half the cost of Opus. Fast.',
+    aiHint_sonnet_medium: 'Fastest and cheapest. Great for quick ideas and fine-tuning.',
     // step 3
     serieel: 'SERIAL',
     toneAnalyse: 'TONE ANALYSIS',

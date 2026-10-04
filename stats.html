@@ -120,6 +120,7 @@
         <div class="stat-card"><div class="label">LAATSTE 30 DAGEN</div><div class="num" id="kost30">$0</div><div class="sub" id="kostZoek">0 zoekopdrachten totaal</div></div>
       </div>
       <div class="bass-bars" id="kostSoorten" style="margin-top:1rem"></div>
+      <div class="bass-bars" id="kostModellen" style="margin-top:1rem"></div>
     </div>
 
     <div class="panel">
@@ -197,6 +198,12 @@ function toonDashboard(d) {
   document.getElementById('kostSoorten').innerHTML = Object.keys(soorten).map(function(s) {
     var v = (k.perSoort || {})[s] || 0;
     return '<div class="bass-bar-row"><div class="bass-bar-label">' + soorten[s] + '</div><div class="bass-bar-track"><div class="bass-bar-fill spector" style="width:' + (v / maxK * 100).toFixed(1) + '%"></div></div><div class="bass-bar-num">' + geld(v) + '</div></div>';
+  }).join('');
+
+  var perModel = k.perModel || [];
+  var maxM = Math.max.apply(null, perModel.map(function(m) { return m.dollar; }).concat([0])) || 1;
+  document.getElementById('kostModellen').innerHTML = perModel.map(function(m) {
+    return '<div class="bass-bar-row"><div class="bass-bar-label">' + esc(m.naam.toUpperCase()) + '</div><div class="bass-bar-track"><div class="bass-bar-fill pbass" style="width:' + (m.dollar / maxM * 100).toFixed(1) + '%"></div></div><div class="bass-bar-num">' + geld(m.dollar) + '</div></div>';
   }).join('');
 
   // Bas bars

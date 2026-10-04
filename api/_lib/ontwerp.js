@@ -183,7 +183,7 @@ async function controleerEnRepareer(scenes, ctx) {
       ctx.onStatus && ctx.onStatus({ fase: 'controle', tekst: c.fouten.length + ' problemen gevonden in ' + scene.bas_id + ', Claude repareert ze' });
       try {
         var r = await vraagJson({
-          model: claude.MODEL,
+          model: ctx.model || claude.MODEL,
           max_tokens: 32000,
           thinking: { type: 'adaptive' },
           output_config: { effort: 'medium', format: claude.jsonFormaat(sceneSchema(bloknamen(ctx.catalogus), [scene.bas_id])) },
@@ -214,6 +214,7 @@ async function controleerEnRepareer(scenes, ctx) {
 // opts: { artist, song, bassen (ids), extra, taal, vers, onStatus, voorbeelden }
 async function analyse(opts) {
   var start = Date.now();
+  var ai = claude.keuze(opts.model, opts.effort);
   var status = opts.onStatus || function() {};
   var catalogus = await blokken.laad();
   var meta = await blokken.laadMeta();
@@ -227,7 +228,7 @@ async function analyse(opts) {
   var profiel = null, onderzoekFout = null;
   try {
     var o = await onderzoekLib.onderzoek(opts.artist, opts.song, {
-      taal: opts.taal, extra: opts.extra, vers: opts.vers,
+      taal: opts.taal, extra: opts.extra, vers: opts.vers, model: ai.model, effort: ai.effort,
       onStatus: function(v) {
         if (v.zoekt) status({ fase: 'onderzoek', tekst: 'Zoekt: ' + v.zoekt });
         else if (v.leest) status({ fase: 'onderzoek', tekst: 'Leest: ' + v.leest });
@@ -254,10 +255,10 @@ async function analyse(opts) {
     + bassen.map(function(b) { return '- bas_id "' + b.id + '": ' + rigLib.beschrijf(b); }).join('\n')
     + (opts.extra ? '\n\nExtra wensen van de speler: ' + opts.extra : '');
   var ontwerp = await vraagJson({
-    model: claude.MODEL,
+    model: ai.model,
     max_tokens: 48000,
     thinking: { type: 'adaptive' },
-    output_config: { effort: 'high', format: claude.jsonFormaat(analyseSchema(bloknamen(catalogus), bassen.map(function(b) { return b.id; }))) },
+    output_config: { effort: ai.effort, format: claude.jsonFormaat(analyseSchema(bloknamen(catalogus), bassen.map(function(b) { return b.id; }))) },
     system: system,
     messages: [{ role: 'user', content: vraag }]
   }, blokVolger(function(v) { status({ fase: 'ontwerp', tekst: v.tekst }); }));
@@ -271,7 +272,7 @@ async function analyse(opts) {
 
   // C. controle
   status({ fase: 'controle', tekst: 'Controleren tegen de catalogus' });
-  var gecontroleerd = await controleerEnRepareer(scenes, { catalogus: catalogus, system: system, start: start, onStatus: status });
+  var gecontroleerd = await controleerEnRepareer(scenes, { catalogus: catalogus, system: system, start: start, onStatus: status, model: ai.model });
   kosten = claude.telOp(kosten, gecontroleerd.kosten);
 
   return {
@@ -281,13 +282,15 @@ async function analyse(opts) {
     onderzoek: profiel,
     onderzoekFout: onderzoekFout,
     kosmos: meta.kosmos,
+    ai: ai,
     kosten: kosten
   };
 }
 
-// Fine-tunen van één scene. opts: { scene, vraag, geschiedenis, onderzoek, context, taal, onStatus }
+// Fine-tunen van één scene. opts: { scene, vraag, geschiedenis, onderzoek, context, taal, model, effort, onStatus }
 async function chat(opts) {
   var start = Date.now();
+  var ai = claude.keuze(opts.model, opts.effort);
   var catalogus = await blokken.laad();
   var meta = await blokken.laadMeta();
   var rig = await rigLib.laad();
@@ -307,15 +310,15 @@ async function chat(opts) {
   var status = opts.onStatus || function() {};
   status({ fase: 'ontwerp', tekst: 'Preset bijwerken' });
   var r = await vraagJson({
-    model: claude.MODEL,
+    model: ai.model,
     max_tokens: 32000,
     thinking: { type: 'adaptive' },
-    output_config: { effort: 'medium', format: claude.jsonFormaat(chatSchema(bloknamen(catalogus), bas.id)) },
+    output_config: { effort: ai.effort, format: claude.jsonFormaat(chatSchema(bloknamen(catalogus), bas.id)) },
     system: system,
     messages: [{ role: 'user', content: tekst }]
   }, blokVolger(function(v) { status({ fase: 'ontwerp', tekst: v.tekst }); }));
-  var g = await controleerEnRepareer([r.data.scene], { catalogus: catalogus, system: system, start: start, onStatus: status, maxMs: 150000 });
-  return { antwoord: r.data.antwoord, scene: g.scenes[0], kosten: claude.telOp(r.kosten, g.kosten) };
+  var g = await controleerEnRepareer([r.data.scene], { catalogus: catalogus, system: system, start: start, onStatus: status, maxMs: 150000, model: ai.model });
+  return { antwoord: r.data.antwoord, scene: g.scenes[0], ai: ai, kosten: claude.telOp(r.kosten, g.kosten) };
 }
 
 // ---------- vertalen: alleen de tekstvelden ----------
@@ -337,12 +340,13 @@ function zetPad(obj, pad, waarde) {
   o[pad[pad.length - 1]] = waarde;
 }
 
-async function vertaal(scene, taal) {
+async function vertaal(scene, taal, model) {
+  var ai = claude.keuze(model, 'medium');
   var velden = tekstVelden(scene);
-  if (!velden.length) return { scene: scene, kosten: { dollar: 0, tokens: 0 } };
+  if (!velden.length) return { scene: scene, ai: ai, kosten: { dollar: 0, tokens: 0 } };
   var doel = taal === 'en' ? 'English' : 'Nederlands';
   var r = await vraagJson({
-    model: claude.MODEL,
+    model: ai.model,
     max_tokens: 16000,
     output_config: {
       effort: 'low',
@@ -355,7 +359,7 @@ async function vertaal(scene, taal) {
   var teksten = r.data.teksten || [];
   if (teksten.length !== velden.length) throw new Error('Vertaling onvolledig');
   velden.forEach(function(v, i) { zetPad(uit, v.pad, teksten[i]); });
-  return { scene: uit, kosten: r.kosten };
+  return { scene: uit, ai: ai, kosten: r.kosten };
 }
 
 module.exports = {

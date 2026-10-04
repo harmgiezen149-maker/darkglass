@@ -52,7 +52,49 @@ function renderBasSelector() {
   });
 }
 
+// =====================
+// AI-MODEL EN EFFORT
+// =====================
+var AI_OPSLAG = 'dg_ai';
+
+function huidigeAi() {
+  var el = document.getElementById('aiKeuze');
+  return Modellen.uitWaarde(el ? el.value : '');
+}
+
+function aiTekst(ai) {
+  return ai ? Modellen.label(ai) : '';
+}
+
+function renderAiKeuze() {
+  var el = document.getElementById('aiKeuze');
+  if (!el) return;
+  var bewaard = '';
+  try { bewaard = localStorage.getItem(AI_OPSLAG) || ''; } catch (e) {}
+  var gekozen = Modellen.uitWaarde(bewaard || el.value);
+  var std = Modellen.STANDAARD;
+  el.innerHTML = Modellen.opties().map(function(o) {
+    var isStd = o.model === std.model && o.effort === std.effort;
+    return '<option value="' + esc(o.waarde) + '"' + (o.model === gekozen.model && o.effort === gekozen.effort ? ' selected' : '') + '>'
+      + esc(o.label + (isStd ? ' (' + t('standaard') + ')' : '')) + '</option>';
+  }).join('');
+  zetAiHint();
+}
+
+function zetAiHint() {
+  var ai = huidigeAi();
+  var m = Modellen.model(ai.model);
+  var hint = document.getElementById('aiHint');
+  if (hint) hint.textContent = t('aiHint_' + (m ? m.kort : 'opus') + '_' + ai.effort);
+}
+
+document.getElementById('aiKeuze').addEventListener('change', function() {
+  try { localStorage.setItem(AI_OPSLAG, this.value); } catch (e) {}
+  zetAiHint();
+});
+
 function onTaalGewijzigd() {
+  renderAiKeuze();
   if (RIG.bassen.length) renderBasSelector();
   if (huidig && !bezig) renderHuidig();
   if (typeof renderBibliotheek === 'function') renderBibliotheek();
@@ -148,18 +190,19 @@ function analyzeTone() {
   var vers = document.getElementById('versOnderzoek');
   sseVerzoek('/api/analyse', {
     artist: artist, song: song, bassen: bassen, extra: document.getElementById('extraInput').value.trim(),
-    taal: currentLang, vers: !!(vers && vers.checked)
+    taal: currentLang, vers: !!(vers && vers.checked), model: huidigeAi().model, effort: huidigeAi().effort
   }, function(ev) {
     if (ev.onderzoek) onderzoekHtml = PresetRender.renderOnderzoek(ev.onderzoek, { t: t, open: true });
     if (ev.tekst) { log.push(ev.tekst); toon(ev.tekst); }
   }).then(function(r) {
-    huidig = { artiest: r.artiest, song: r.song, scenes: r.scenes, onderzoek: r.onderzoek, onderzoekFout: r.onderzoekFout, kosten: r.kosten };
+    huidig = { artiest: r.artiest, song: r.song, scenes: r.scenes, onderzoek: r.onderzoek, onderzoekFout: r.onderzoekFout, kosten: r.kosten, ai: r.ai };
     activeScene = r.scenes[0].bas_id;
     chatVerzoeken = [];
     renderHuidig();
     document.getElementById('chatPanel').classList.remove('hidden');
     document.getElementById('chatMessages').innerHTML = '';
-    addMsg('assistant', (isMeerScene() ? t('dualPresetKlaar') : t('presetKlaar')) + (r.kosten && r.kosten.dollar ? ' ($' + r.kosten.dollar.toFixed(2) + ')' : ''));
+    var details = [r.ai ? aiTekst(r.ai) : '', r.kosten && r.kosten.dollar ? '$' + r.kosten.dollar.toFixed(2) : ''].filter(Boolean).join(' \u00b7 ');
+    addMsg('assistant', (isMeerScene() ? t('dualPresetKlaar') : t('presetKlaar')) + (details ? ' (' + details + ')' : ''));
     if (vers) vers.checked = false;
   }).catch(function(e) {
     document.getElementById('outputContent').innerHTML = onderzoekHtml + '<p style="color:var(--accent2)">' + esc(t('fout') + e.message) + '</p>';
@@ -186,11 +229,13 @@ function sendChat() {
   document.getElementById('outputContent').innerHTML = loadingHtml(t('presetBijwerken'));
   sseVerzoek('/api/chat', {
     modus: 'chat', scene: scene, vraag: vraag, taal: currentLang, onderzoek: huidig.onderzoek,
+    model: huidigeAi().model, effort: huidigeAi().effort,
     context: huidig.artiest + ' - ' + huidig.song, geschiedenis: chatVerzoeken.slice(-6)
   }, function(ev) {
     if (ev.tekst) { log.push(ev.tekst); document.getElementById('outputContent').innerHTML = loadingHtml(ev.tekst, log.slice(-6)); }
   }).then(function(r) {
     chatVerzoeken.push(vraag);
+    if (r.ai) huidig.ai = r.ai;
     vervangScene(r.scene, 'chat');
     zetLaatsteBericht(r.antwoord || t('presetBijgewerkt'));
     trackEvent('chat');
@@ -236,7 +281,7 @@ function translatePreset() {
   btn.disabled = true;
   btn.innerHTML = '<span>&#8635;</span> ' + esc(t('vertalenBezig'));
   document.getElementById('outputContent').innerHTML = loadingHtml(t('vertalenBezig'));
-  sseVerzoek('/api/chat', { modus: 'vertaal', scene: scene, taal: currentLang })
+  sseVerzoek('/api/chat', { modus: 'vertaal', scene: scene, taal: currentLang, model: huidigeAi().model })
     .then(function(r) { vervangScene(r.scene, 'vertaling'); addMsg('assistant', t('vertaaldKlaar')); trackEvent('vertaal'); })
     .catch(function(e) { addMsg('assistant', t('fout') + e.message); })
     .then(function() {
@@ -254,6 +299,7 @@ document.getElementById('artistInput').addEventListener('keydown', function(e) {
 document.getElementById('songInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') analyzeTone(); });
 
 applyTranslations();
+renderAiKeuze();
 Promise.all([laadRig(), laadCatalogus()]).then(function() {
   if (typeof laadBibliotheek === 'function') laadBibliotheek();
 });

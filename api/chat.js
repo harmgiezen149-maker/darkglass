@@ -11,8 +11,8 @@ function geldigeScene(s) {
   return s && typeof s === 'object' && typeof s.bas_id === 'string' && Array.isArray(s.blokken) && JSON.stringify(s).length < 60000;
 }
 
-// POST { modus: 'chat', scene, vraag, geschiedenis, onderzoek, context, taal }
-// POST { modus: 'vertaal', scene, taal }
+// POST { modus: 'chat', scene, vraag, geschiedenis, onderzoek, context, taal, model, effort }
+// POST { modus: 'vertaal', scene, taal, model }
 // Antwoord als Server-Sent Events (zie api/analyse.js), met
 //   data: {"resultaat": {"scene": {...}, "antwoord": "..."}}
 module.exports = async function handler(req, res) {
@@ -33,16 +33,17 @@ module.exports = async function handler(req, res) {
     var r;
     if (b.modus === 'vertaal') {
       s.zend({ fase: 'vertaal', tekst: 'Vertalen' });
-      r = await ontwerp.vertaal(b.scene, taal);
+      r = await ontwerp.vertaal(b.scene, taal, b.model);
     } else {
       var onderzoek = b.onderzoek && typeof b.onderzoek === 'object' && JSON.stringify(b.onderzoek).length < 30000 ? b.onderzoek : null;
       r = await ontwerp.chat({
         scene: b.scene, vraag: kort(b.vraag, 1500), taal: taal, onderzoek: onderzoek, context: kort(b.context, 200),
+        model: b.model, effort: b.effort,
         geschiedenis: Array.isArray(b.geschiedenis) ? b.geschiedenis.map(String) : [],
         onStatus: function(v) { if (v.tekst) s.zend({ fase: v.fase, tekst: v.tekst }); }
       });
     }
-    await claude.registreerKosten(b.modus, r.kosten);
+    await claude.registreerKosten(b.modus, r.kosten, r.ai && r.ai.model);
     s.zend({ resultaat: r });
   } catch (e) {
     console.error('Chat mislukt:', e);

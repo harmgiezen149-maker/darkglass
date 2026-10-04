@@ -69,6 +69,12 @@
         <textarea id="extraInput" class="text-input text-area" rows="3" data-i18n-placeholder="extraPh" placeholder="bijv: meer distortion dan het origineel, parallelle processing nodig..."></textarea>
       </div>
 
+      <div class="field-group">
+        <label class="field-label" for="aiKeuze" data-i18n="aiModel">AI-MODEL</label>
+        <select id="aiKeuze" class="text-input ai-select"></select>
+        <div class="ai-hint" id="aiHint"></div>
+      </div>
+
       <label class="check-label"><input type="checkbox" id="versOnderzoek" /> <span data-i18n="versOnderzoek">Opnieuw onderzoeken (cache negeren)</span></label>
 
       <button class="analyze-btn" id="analyzeBtn" onclick="analyzeTone()">
@@ -143,6 +149,7 @@
   <script src="shared/validatie.js"></script>
   <script src="shared/preset-render.js"></script>
   <script src="shared/legacy.js"></script>
+  <script src="shared/modellen.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/util.js"></script>
   <script src="js/bibliotheek.js"></script>
