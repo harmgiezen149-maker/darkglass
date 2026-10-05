@@ -408,3 +408,11 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 /* ===== AI-model keuze ===== */
 .ai-select { cursor: pointer; }
 .ai-hint { font-size: 0.66rem; color: var(--text-dimmer); margin-top: 0.4rem; line-height: 1.5; }
+
+/* Export in het officiële Anagram-presetformaat */
+.anagram-info { margin-top: 0.75rem; border: 1px solid var(--border); border-left: 3px solid var(--accent3); border-radius: var(--radius); padding: 0.75rem 1rem; font-size: 0.74rem; line-height: 1.6; color: var(--text-dim); }
+.anagram-info p { margin-bottom: 0.4rem; }
+.anagram-info strong { color: var(--text); }
+.anagram-info .anagram-telling { font-size: 0.68rem; letter-spacing: 0.05em; color: var(--text-dimmer); }
+.anagram-info summary { cursor: pointer; color: var(--accent3); font-size: 0.68rem; }
+.anagram-info ul { margin: 0.4rem 0 0 1.1rem; }

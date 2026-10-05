@@ -240,3 +240,41 @@ async function standaardModel(page, basis, stap) {
 }
 
 module.exports.push(standaardModel);
+
+async function anagramFormaat(page, basis, stap) {
+  var A = require('../shared/anagram-preset');
+  // Officiële id invullen in de blok-editor (eerste blok)
+  await page.goto(basis + '/blocks.html');
+  if (await page.waitForSelector('.login-overlay', { timeout: 2000 }).catch(function() { return null; })) {
+    await page.fill('.login-input', process.env.ADMIN_WACHTWOORD);
+    await page.click('.login-ok');
+  }
+  await page.waitForSelector('.sectie-chevron');
+  await page.click('.sectie-chevron >> nth=0');
+  await page.click('.blok-chevron >> nth=0');
+  var naam = await page.inputValue('.blok-item >> nth=0 >> [data-veld="naam"]');
+  await page.fill('.blok-item >> nth=0 >> [data-veld="uri"]', 'urn:darkglass:test-blok');
+  var params = await page.inputValue('.blok-item >> nth=0 >> [data-veld="params"]');
+  await page.fill('.blok-item >> nth=0 >> [data-veld="params"]', params.replace(/^([^(,]+?)\s*\(/, '$1 [eerste] ('));
+  await page.click('#saveBtn');
+  await page.waitForSelector('#statusBar.ok');
+  var d = await page.evaluate(function() { return fetch('/api/blocks').then(function(r) { return r.json(); }); });
+  var b = d.blocks[0].blokken[0];
+  stap('blok-editor bewaart officiële id en symbool', b.naam === naam && b.uri === 'urn:darkglass:test-blok' && b.parameters[0].symbol === 'eerste', JSON.stringify(b).slice(0, 200));
+
+  await page.goto(basis + '/');
+  await page.waitForSelector('#bassSelector .bass-btn');
+  await page.fill('#artistInput', 'Tool');
+  await page.fill('#songInput', 'Schism');
+  await page.click('#analyzeBtn');
+  await page.waitForSelector('#chatPanel:not(.hidden)', { timeout: 15000 });
+  var [download] = await Promise.all([page.waitForEvent('download'), page.click('text=ANAGRAM-FORMAAT')]);
+  var pad = await download.path();
+  var json = JSON.parse(require('fs').readFileSync(pad, 'utf8'));
+  stap('download in het officiële presetformaat is geldig', /\.anagram\.json$/.test(download.suggestedFilename()) && A.controleer(json).length === 0 && json.type === 'preset' && json.version === 1, A.controleer(json).join('; '));
+  stap('songdelen staan als scènes in het bestand', JSON.stringify(json.preset.sceneNames) === '{"1":"Refrein"}');
+  var info = await page.locator('#anagramInfo').innerText();
+  stap('uitleg over versleuteling en de Anagram Editor zichtbaar', /Anagram Editor/.test(info) && /officiële id/.test(info));
+}
+
+module.exports.push(anagramFormaat);
