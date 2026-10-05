@@ -283,11 +283,14 @@ function readFromDom() {
     sectieEl.querySelectorAll('.blok-item').forEach(function(blokEl) {
       var paramTekst = (blokEl.querySelector('[data-veld="params"]') || {}).value || '';
       var meta = blokEl._meta || { status: 'handmatig' };
+      // Alleen symbolen [..] toevoegen verandert de herkomst niet
+      var zonderSymbolen = function(s) { return String(s || '').replace(/\s*\[[^\]]*\]/g, '').trim(); };
       var blok = {
         naam:       (blokEl.querySelector('[data-veld="naam"]')   || {}).value || '',
         basis:      (blokEl.querySelector('[data-veld="basis"]')  || {}).value || '',
+        uri:        ((blokEl.querySelector('[data-veld="uri"]')   || {}).value || '').trim(),
         parameters: Catalogus.parseParameterTekst(paramTekst),
-        status:     paramTekst.trim() === String(meta.origineel || '').trim() ? meta.status : 'handmatig'
+        status:     zonderSymbolen(paramTekst) === zonderSymbolen(meta.origineel) ? meta.status : 'handmatig'
       };
       if (meta.bron) blok.bron = meta.bron;
       if (meta.notitie) blok.notitie = meta.notitie;
@@ -506,6 +509,19 @@ function createBlokEl(blok) {
   paramsGroup.appendChild(paramsArea);
   paramsGroup.appendChild(chips);
 
+  // Officiële id voor het Anagram-presetformaat (optioneel)
+  var uriGroup = document.createElement('div');
+  var uriLabel = document.createElement('label');
+  uriLabel.className = 'field-label';
+  uriLabel.textContent = 'OFFICIËLE ID (LV2-URI, optioneel)';
+  var uriInput = document.createElement('input');
+  uriInput.className = 'text-input';
+  uriInput.setAttribute('data-veld', 'uri');
+  uriInput.value = blok.uri || '';
+  uriInput.placeholder = 'bijv. urn:darkglass:... — nodig voor export in het Anagram-formaat; symbolen per parameter als Drive [drive] (0-100%)';
+  uriGroup.appendChild(uriLabel);
+  uriGroup.appendChild(uriInput);
+
   // Herkomst bewaren; handmatig aangepaste parameters worden "handmatig"
   item._meta = { status: blok.status || 'handmatig', bron: blok.bron || null, notitie: blok.notitie || '', origineel: paramsArea.value };
   var herkomst = document.createElement('div');
@@ -515,6 +531,7 @@ function createBlokEl(blok) {
 
   blokBody.appendChild(row);
   blokBody.appendChild(paramsGroup);
+  blokBody.appendChild(uriGroup);
 
   item.appendChild(blokHeader);
   item.appendChild(blokBody);

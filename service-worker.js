@@ -1,7 +1,7 @@
 // Service Worker voor Darkglass Anagram PWA.
 // Strategie: netwerk eerst (altijd de nieuwste versie na een deploy), cache
 // alleen als reserve wanneer je offline bent.
-var CACHE_NAAM = 'anagram-v8';
+var CACHE_NAAM = 'anagram-v9';
 var STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ var STATIC_ASSETS = [
   '/shared/preset-render.js',
   '/shared/legacy.js',
   '/shared/modellen.js',
+  '/shared/anagram-preset.js',
   '/js/i18n.js',
   '/js/util.js',
   '/js/bibliotheek.js',

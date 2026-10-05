@@ -10,6 +10,11 @@ Object.assign(I18N.nl, {
   toepassen: 'TOEPASSEN',
   annuleer: 'ANNULEER',
   kopieer: 'KOPIEER TEKST',
+  anagramFormaat: 'ANAGRAM-FORMAAT',
+  anagramVolledig: '✓ Volledig: alle blokken en parameters hebben een officiële id.',
+  anagramOnvolledig: 'Bijna klaar: vul in de blok-editor de officiële id\'s aan voor een volledige export.',
+  anagramUitleg: 'Bestand in het officiële presetformaat van Darkglass (versie 1). Direct importeren kan nog niet: .angr-bestanden zijn versleuteld. Darkglass werkt aan de Anagram Editor (verwacht eind 2026), waarmee dit ook voor andere programma\'s mogelijk wordt.',
+  anagramTelling: 'officiële id\'s',
   gekopieerd: 'Gekopieerd!',
   exporteer: 'EXPORT',
   oefenblad: 'OEFENBLAD',
@@ -49,6 +54,11 @@ Object.assign(I18N.en, {
   toepassen: 'APPLY',
   annuleer: 'CANCEL',
   kopieer: 'COPY TEXT',
+  anagramFormaat: 'ANAGRAM FORMAT',
+  anagramVolledig: '✓ Complete: every block and parameter has an official id.',
+  anagramOnvolledig: 'Almost there: add the official ids in the block editor for a complete export.',
+  anagramUitleg: 'File in Darkglass\'s official preset format (version 1). Direct import is not possible yet: .angr files are encrypted. Darkglass is working on the Anagram Editor (expected end of 2026), which will open this up to other tools.',
+  anagramTelling: 'official ids',
   gekopieerd: 'Copied!',
   exporteer: 'EXPORT',
   oefenblad: 'PRACTICE SHEET',
@@ -133,8 +143,9 @@ function renderActies() {
     + '<button class="actie-btn" onclick="startBewerken()">' + esc(t('bewerkWaarden')) + '</button>'
     + '<button class="actie-btn" onclick="kopieerTekst(this)">' + esc(t('kopieer')) + '</button>'
     + '<button class="actie-btn" onclick="exporteerHuidig()">' + esc(t('exporteer')) + '</button>'
+    + '<button class="actie-btn" onclick="exporteerAnagram()">' + esc(t('anagramFormaat')) + '</button>'
     + '<button class="actie-btn" onclick="openOefenblad()">' + esc(t('oefenblad')) + '</button>'
-    + '</div>';
+    + '</div><div id="anagramInfo"></div>';
   if (versies.length) {
     h += '<div class="acties-rij"><select id="versieKeuze" class="text-input versie-select">'
       + versies.map(function(v, i) { return '<option value="' + i + '">' + esc((v.datum || '?') + (v.bron ? ' · ' + v.bron : '')) + '</option>'; }).join('')
@@ -233,6 +244,27 @@ function exporteerHuidig() {
   var p = huidig.presetId && presetsCache[huidig.presetId];
   var data = p && !huidig.gewijzigd ? p : { artist: huidig.artiest, song: huidig.song, versie: 3, scenes: huidig.scenes, onderzoek: huidig.onderzoek };
   download(bestandsnaam(huidig.artiest + '-' + huidig.song) + '.json', { type: 'darkglass-anagram-presets', versie: 1, presets: [data] });
+}
+
+// Export van de actieve scene in het officiële presetformaat (shared/anagram-preset.js).
+function exporteerAnagram() {
+  var scene = sceneVan(activeScene);
+  if (!scene) return;
+  var b = basVan(scene.bas_id);
+  var naam = huidig.artiest + ' - ' + huidig.song + (isMeerScene() && b ? ' (' + b.naam + ')' : '');
+  var r = AnagramPreset.maak(scene, CATALOGUS, { naam: naam });
+  var fouten = AnagramPreset.controleer(r.preset);
+  if (fouten.length) { alert(t('fout') + fouten.join('; ')); return; }
+  download(bestandsnaam(naam) + '.anagram.json', r.preset);
+  var tel = r.telling;
+  var h = '<div class="anagram-info"><p><strong>' + esc(r.volledig ? t('anagramVolledig') : t('anagramOnvolledig')) + '</strong></p>'
+    + '<p>' + esc(t('anagramUitleg')) + '</p>'
+    + '<p class="anagram-telling">' + esc(t('anagramTelling')) + ': ' + tel.metUri + '/' + tel.blokken + ' blokken · ' + tel.metSymbool + '/' + tel.parameters + ' parameters</p>';
+  if (r.waarschuwingen.length) {
+    h += '<details><summary>' + r.waarschuwingen.length + ' ' + esc(currentLang === 'en' ? 'notes' : 'opmerkingen') + '</summary><ul>'
+      + r.waarschuwingen.map(function(w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></details>';
+  }
+  document.getElementById('anagramInfo').innerHTML = h + '</div>';
 }
 
 function openOefenblad() {

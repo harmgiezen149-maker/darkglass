@@ -98,9 +98,24 @@
     return { min: lo, max: hi, eenheid: eenheid };
   }
 
+  // Officiële id's in het Anagram-presetformaat: een LV2-URI per blok en een
+  // symbool per parameter (bv. "drive", of ":bypass" voor speciale symbolen).
+  var SYMBOOL = /^:?[A-Za-z_][A-Za-z0-9_]*$/;
+  var URI = /^(urn:|https?:\/\/)\S{1,200}$/;
+
   function parseParameter(naam, spec) {
     naam = String(naam || '').trim();
     spec = String(spec || '').trim();
+    // "Drive [drive]": het symbool tussen blokhaken
+    var symbool = '';
+    var ms = naam.match(/^(.*?)\s*\[([^\]]*)\]\s*$/);
+    if (ms && SYMBOOL.test(ms[2].trim())) { naam = ms[1].trim(); symbool = ms[2].trim(); }
+    var p = parseSpec(naam, spec);
+    if (symbool) p.symbol = symbool;
+    return p;
+  }
+
+  function parseSpec(naam, spec) {
     if (!spec) return { naam: naam, type: 'tekst' };
 
     var p = { naam: naam };
@@ -181,7 +196,8 @@
 
   function formatParameter(p) {
     var s = formatSpec(p);
-    return s ? p.naam + ' (' + s + ')' : p.naam;
+    var naam = p.naam + (p.symbol ? ' [' + p.symbol + ']' : '');
+    return s ? naam + ' (' + s + ')' : naam;
   }
 
   function formatParameters(lijst) {
@@ -204,6 +220,7 @@
     if (uit.type === 'keuze' && !opties.length) uit.type = 'tekst';
     if (p.standaard != null && p.standaard !== '') uit.standaard = String(p.standaard).slice(0, 40);
     if (p.omschrijving) uit.omschrijving = String(p.omschrijving).slice(0, 200);
+    if (p.symbol && SYMBOOL.test(String(p.symbol))) uit.symbol = String(p.symbol);
     return uit;
   }
 
@@ -223,6 +240,7 @@
       ['type', 'kosmos', 'pagina', 'url', 'datum'].forEach(function(k) { if (b.bron[k] != null && b.bron[k] !== '') uit.bron[k] = b.bron[k]; });
     }
     if (b.notitie) uit.notitie = String(b.notitie).slice(0, 500);
+    if (b.uri && URI.test(String(b.uri).trim())) uit.uri = String(b.uri).trim();
     return uit;
   }
 
@@ -377,6 +395,12 @@
             if (x.id !== v.huidig.id) return x;
             var nieuw = Object.assign({}, blok);
             if (x.notitie) nieuw.notitie = x.notitie;
+            // officiële id's die de handleiding niet kent, blijven behouden
+            if (x.uri && !nieuw.uri) nieuw.uri = x.uri;
+            nieuw.parameters = (nieuw.parameters || []).map(function(p) {
+              var oud = vindParameter(x, p.naam);
+              return oud && oud.symbol && !p.symbol ? Object.assign({}, p, { symbol: oud.symbol }) : p;
+            });
             return nieuw;
           });
         });
