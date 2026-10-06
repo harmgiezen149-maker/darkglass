@@ -2,6 +2,7 @@
 
 var RIG = { bassen: [] };
 var CATALOGUS = [];
+var LIMIETEN = {};               // grenzen van het apparaat (blok-editor)
 var selectedBass = null;          // bas-id of 'alle'
 var huidig = null;                // { artiest, song, scenes: [...], onderzoek, presetId, label }
 var activeScene = null;           // bas_id van de zichtbare scene
@@ -22,7 +23,7 @@ function laadRig() {
 }
 
 function laadCatalogus() {
-  return apiJson('/api/blocks').then(function(d) { CATALOGUS = Catalogus.normaliseerCatalogus(d.blocks); })
+  return apiJson('/api/blocks').then(function(d) { CATALOGUS = Catalogus.normaliseerCatalogus(d.blocks); LIMIETEN = Catalogus.normaliseerLimieten(d.limieten); })
     .catch(function(e) { console.error('Catalogus laden mislukt:', e.message); });
 }
 

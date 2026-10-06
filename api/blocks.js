@@ -4,15 +4,16 @@ var redis = require('./_lib/redis');
 var blokken = require('./_lib/blokken');
 var Catalogus = require('../shared/catalogus');
 
-// GET            → huidige blokken
+// GET            → huidige blokken, meta en apparaatgrenzen
 // GET ?reset=1   → herstel naar eigen standaard (of ingebouwde lijst) — beheer
-// POST           → { blocks, setDefault } opslaan — beheer
+// POST           → { blocks, setDefault } opslaan, of { limieten } — beheer
 module.exports = async function handler(req, res) {
   if (!http.vereisMethode(req, res, ['GET', 'POST'])) return;
   var q = http.query(req);
 
   if (req.method === 'GET' && q.reset !== '1') {
-    return http.stuur(res, 200, { blocks: await blokken.laad(), meta: await blokken.laadMeta() });
+    var r = await Promise.all([blokken.laad(), blokken.laadMeta(), blokken.laadLimieten()]);
+    return http.stuur(res, 200, { blocks: r[0], meta: r[1], limieten: r[2] });
   }
 
   if (!auth.vereisAdmin(req, res)) return;
@@ -34,6 +35,10 @@ module.exports = async function handler(req, res) {
   }
 
   var b = http.body(req);
+  if (b.limieten && !Array.isArray(b.blocks)) {
+    try { return http.stuur(res, 200, { ok: true, limieten: await blokken.bewaarLimieten(b.limieten) }); }
+    catch (e) { return http.stuur(res, 500, { error: e.message }); }
+  }
   if (!Array.isArray(b.blocks)) return http.stuur(res, 400, { error: 'Geen blokken opgegeven' });
   try {
     var cat = await blokken.bewaar(b.blocks);

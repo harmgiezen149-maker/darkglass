@@ -124,6 +124,8 @@
     /* SYNC */
     .sync-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
     .sync-panel.update { border-color: #ffb347; }
+    .limieten-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.6rem; }
+    .limieten-raster label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.6rem; letter-spacing: 0.12em; color: var(--text-dim); }
     .sync-kop { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .sync-titel { font-family: var(--font-a); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2em; color: var(--accent3); }
     .sync-info { font-size: 0.68rem; color: var(--text-dim); line-height: 1.6; }
@@ -197,6 +199,17 @@
     <div class="sync-log" id="syncLog"></div>
     <div id="voorstellen"></div>
   </section>
+  <section class="sync-panel" id="limietenPanel">
+    <div class="sync-kop"><span class="sync-titel">APPARAATGRENZEN</span></div>
+    <div class="sync-info">Optioneel. De AI houdt zich aan deze grenzen, de controle bewaakt ze en de export in het Anagram-formaat gebruikt ze. Leeg = geen grens.</div>
+    <div class="limieten-raster">
+      <label>MAX. BLOKKEN PER PRESET<input class="text-input" id="limMaxBlokken" inputmode="numeric" /></label>
+      <label>MAX. RIJEN<input class="text-input" id="limMaxRijen" inputmode="numeric" /></label>
+      <label>MAX. SCÈNES PER PRESET<input class="text-input" id="limMaxScenes" inputmode="numeric" /></label>
+      <label>MAP VOOR IR-BESTANDEN<input class="text-input" id="limIrMap" placeholder="/pad/naar/map" /></label>
+    </div>
+    <div class="sync-acties"><button class="btn btn-sm btn-primary" id="btnLimieten" onclick="bewaarLimieten()">GRENZEN OPSLAAN</button></div>
+  </section>
   <div id="blocksContainer"><div class="loading-msg">Blokken laden...</div></div>
   <button class="add-sectie-btn" onclick="addSectie()">+ NIEUWE SECTIE TOEVOEGEN</button>
 </main>
@@ -221,10 +234,34 @@ function parseBlocks(raw) {
 // =====================
 // LADEN
 // =====================
+// =====================
+// APPARAATGRENZEN
+// =====================
+function toonLimieten(l) {
+  l = Catalogus.normaliseerLimieten(l);
+  document.getElementById('limMaxBlokken').value = l.maxBlokken || '';
+  document.getElementById('limMaxRijen').value = l.maxRijen || '';
+  document.getElementById('limMaxScenes').value = l.maxScenes || '';
+  document.getElementById('limIrMap').value = l.irMap || '';
+}
+
+function bewaarLimieten() {
+  var l = {
+    maxBlokken: document.getElementById('limMaxBlokken').value,
+    maxRijen: document.getElementById('limMaxRijen').value,
+    maxScenes: document.getElementById('limMaxScenes').value,
+    irMap: document.getElementById('limIrMap').value
+  };
+  apiJson('/api/blocks', { json: { limieten: l } })
+    .then(function(d) { toonLimieten(d.limieten); showStatus('Apparaatgrenzen opgeslagen.', 'ok'); })
+    .catch(function(e) { showStatus('Opslaan mislukt: ' + e.message, 'err'); });
+}
+
 function loadBlocks(url) {
   document.getElementById('blocksContainer').innerHTML = '<div class="loading-msg">Blokken laden...</div>';
   apiJson(url || '/api/blocks')
     .then(function(d) {
+      if (d.limieten) toonLimieten(d.limieten);
       blocksData = parseBlocks(d.blocks);
       if (blocksData.length === 0) {
         document.getElementById('blocksContainer').innerHTML = '<div class="loading-msg" style="color:var(--accent2)">Geen blokken gevonden. Klik HERSTEL STANDAARD.</div>';

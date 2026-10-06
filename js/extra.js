@@ -13,7 +13,7 @@ Object.assign(I18N.nl, {
   anagramFormaat: 'ANAGRAM-FORMAAT',
   anagramVolledig: '✓ Volledig: alle blokken en parameters hebben een officiële id.',
   anagramOnvolledig: 'Bijna klaar: vul in de blok-editor de officiële id\'s aan voor een volledige export.',
-  anagramUitleg: 'Bestand in het officiële presetformaat van Darkglass (versie 1). Direct importeren kan nog niet: .angr-bestanden zijn versleuteld. Darkglass werkt aan de Anagram Editor (verwacht eind 2026), waarmee dit ook voor andere programma\'s mogelijk wordt.',
+  anagramUitleg: 'Exacte, leesbare weergave van de preset in het gedocumenteerde presetformaat (versie 1). Direct importeren in de Suite kan niet: .angr-bestanden zijn versleuteld. Gebruik het bestand als nauwkeurige invulhulp en archief.',
   anagramTelling: 'officiële id\'s',
   gekopieerd: 'Gekopieerd!',
   exporteer: 'EXPORT',
@@ -57,7 +57,7 @@ Object.assign(I18N.en, {
   anagramFormaat: 'ANAGRAM FORMAT',
   anagramVolledig: '✓ Complete: every block and parameter has an official id.',
   anagramOnvolledig: 'Almost there: add the official ids in the block editor for a complete export.',
-  anagramUitleg: 'File in Darkglass\'s official preset format (version 1). Direct import is not possible yet: .angr files are encrypted. Darkglass is working on the Anagram Editor (expected end of 2026), which will open this up to other tools.',
+  anagramUitleg: 'Exact, readable copy of the preset in the documented preset format (version 1). Direct import into the Suite is not possible: .angr files are encrypted. Use the file as a precise reference and archive.',
   anagramTelling: 'official ids',
   gekopieerd: 'Copied!',
   exporteer: 'EXPORT',
@@ -252,7 +252,7 @@ function exporteerAnagram() {
   if (!scene) return;
   var b = basVan(scene.bas_id);
   var naam = huidig.artiest + ' - ' + huidig.song + (isMeerScene() && b ? ' (' + b.naam + ')' : '');
-  var r = AnagramPreset.maak(scene, CATALOGUS, { naam: naam });
+  var r = AnagramPreset.maak(scene, CATALOGUS, { naam: naam, limieten: typeof LIMIETEN !== 'undefined' ? LIMIETEN : null });
   var fouten = AnagramPreset.controleer(r.preset);
   if (fouten.length) { alert(t('fout') + fouten.join('; ')); return; }
   download(bestandsnaam(naam) + '.anagram.json', r.preset);
