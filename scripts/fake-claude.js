@@ -46,7 +46,11 @@ function inhoud(params) {
 }
 
 function maakBericht(params) {
-  module.exports.gezien.push({ model: params.model, effort: params.output_config && params.output_config.effort });
+  module.exports.gezien.push({
+    model: params.model, effort: params.output_config && params.output_config.effort,
+    display: params.thinking && params.thinking.display,
+    tools: (params.tools || []).map(function(t) { return t.name + ':' + (t.max_uses || '') + (t.max_content_tokens ? ':' + t.max_content_tokens : ''); })
+  });
   var content = inhoud(params);
   var tekst = content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('');
   return {
@@ -60,6 +64,10 @@ function stream(params) {
   var msg = maakBericht(params);
   var events = [{ type: 'message_start', message: Object.assign({}, msg, { content: [] }) }];
   events.push({ type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } });
+  if (params.thinking && params.thinking.display === 'summarized') {
+    events.push({ type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Ik kijk eerst welke versterker op de opname is gebruikt. ' } });
+    events.push({ type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Daarna kies ik de blokken die daar het dichtst bij komen.' } });
+  }
   events.push({ type: 'content_block_stop', index: 0 });
   msg.content.forEach(function(b, i) {
     var idx = i + 1;
@@ -152,7 +160,7 @@ function nepScene(basId, fout) {
     routing: 'serieel', chain_a: ['Compressor/Limiter', 'Microtubes B3K', 'Jim Bass', 'Gain'], chain_b: [], merge_naar: [],
     blokken: [
       { label: 'Compressor/Limiter', blok: 'Compressor/Limiter', origineel: 'compressie', instellingen: [{ parameter: 'Threshold', waarde: '-20 dB' }, { parameter: 'Ratio', waarde: '4:1' }], uitleg: 'Egaliseert de aanslag.' },
-      { label: 'Microtubes B3K', blok: 'Microtubes B3K', origineel: 'Darkglass B3K', instellingen: [{ parameter: 'Drive', waarde: fout ? '140%' : '40%' }, { parameter: 'Blend', waarde: '50%' }, { parameter: 'Grunt', waarde: 'Fat' }, { parameter: 'Mid Boost', waarde: 'On' }, { parameter: 'Tone', waarde: '5 kHz' }], uitleg: 'Grommende drive.' },
+      { label: 'Microtubes B3K', blok: 'Microtubes B3K', origineel: 'Darkglass B3K', instellingen: [{ parameter: 'Drive', waarde: fout ? '140%' : '40%' }, { parameter: 'Blend', waarde: '50%' }, { parameter: 'Grunt', waarde: 'Fat' }, { parameter: 'Mid Boost', waarde: 'On' }, { parameter: 'Tone', waarde: '5 kHz' }].concat(fout ? [{ parameter: 'Fuzz', waarde: '10%' }] : []), uitleg: 'Grommende drive.' },
       { label: 'Jim Bass', blok: 'Jim Bass', origineel: 'Ampeg SVT', instellingen: [{ parameter: 'Gain', waarde: '45%' }, { parameter: 'Bright', waarde: 'Off' }], uitleg: 'Ampeg-basis.' },
       { label: 'Gain', blok: 'Gain', origineel: 'volume', instellingen: [{ parameter: 'Level', waarde: '100%' }], uitleg: 'Volumeregelaar.' }
     ],

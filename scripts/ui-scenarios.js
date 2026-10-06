@@ -295,3 +295,34 @@ async function anagramFormaat(page, basis, stap) {
 }
 
 module.exports.push(anagramFormaat);
+
+async function snelheid(page, basis, stap) {
+  await page.goto(basis + '/');
+  await page.waitForSelector('#diepteKeuze');
+  stap('onderzoek staat standaard op Laag', await page.inputValue('#diepteKeuze') === 'laag' && /4 zoekopdrachten/.test(await page.locator('#diepteHint').innerText()));
+  await page.selectOption('#diepteKeuze', 'hoog');
+  await page.reload();
+  await page.waitForSelector('#diepteKeuze');
+  stap('keuze Hoog blijft bewaard na herladen', await page.inputValue('#diepteKeuze') === 'hoog' && /6 zoekopdrachten/.test(await page.locator('#diepteHint').innerText()));
+  await page.waitForSelector('#bassSelector .bass-btn');
+  await page.fill('#artistInput', 'Nirvana');
+  await page.fill('#songInput', 'Lithium');
+  var gedachte = false;
+  var kijker = setInterval(function() {
+    page.evaluate(function() { return document.getElementById('outputContent').textContent; })
+      .then(function(t) { if (/💭/.test(t)) gedachte = true; }).catch(function() {});
+  }, 20);
+  await page.click('#analyzeBtn');
+  await page.waitForSelector('#chatPanel:not(.hidden)', { timeout: 15000 });
+  clearInterval(kijker);
+  stap('voortgang toont wat de AI denkt', gedachte);
+  stap('resultaat noemt de totale tijd', /klaar in \d+ s/.test(await page.locator('#chatMessages').innerText()));
+  await page.selectOption('#diepteKeuze', 'laag');
+
+  await page.goto(basis + '/stats.html');
+  await page.waitForSelector('#dashView:not(.hidden)', { timeout: 5000 });
+  var tekst = await page.locator('#snelheid').innerText();
+  stap('stats tonen de snelheid per onderzoeksdiepte', /HOOG/.test(tekst) && /LAATSTE 10/.test(tekst) && /\d+ s/.test(tekst), tekst.slice(0, 120));
+}
+
+module.exports.push(snelheid);

@@ -1,6 +1,7 @@
 var http = require('./_lib/http');
 var auth = require('./_lib/auth');
 var redis = require('./_lib/redis');
+var tijdenLib = require('./_lib/tijden');
 
 var Modellen = require('../shared/modellen');
 
@@ -75,7 +76,8 @@ module.exports = async function handler(req, res) {
       dagen: dagen.map(function(k, j) {
         return { datum: k, aantal: n(vast.length + j), kosten: dollar(vast.length + dagen.length + j) };
       }),
-      laatsteEvent: laatst
+      laatsteEvent: laatst,
+      tijden: await tijdenLib.laad()
     });
   } catch (e) {
     return http.stuur(res, 500, { error: e.message });

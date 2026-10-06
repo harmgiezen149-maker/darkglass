@@ -86,7 +86,9 @@ test('analyse-endpoint: onderzoek, ontwerp, reparatie en kosten (nep-Claude)', a
     assert.ok(events.some(function(e) { return /Zoekt:/.test(e.tekst || ''); }), 'zoekopdrachten worden gemeld');
     assert.ok(events.some(function(e) { return e.onderzoek; }), 'onderzoek komt los binnen');
     assert.strictEqual(res.scenes.length, 2);
-    assert.ok(res.scenes[0].controle.gerepareerd, 'Drive 140% wordt door Claude gerepareerd');
+    assert.ok(res.scenes[0].controle.gerepareerd, 'onbekende parameter Fuzz wordt door Claude gerepareerd');
+    assert.ok(!res.scenes[1].controle.gerepareerd, 'een foutloze scene gaat niet naar Claude');
+    assert.ok(res.tijden && res.tijden.totaal >= res.tijden.onderzoek && 'ontwerp' in res.tijden && 'controle' in res.tijden, JSON.stringify(res.tijden));
     assert.deepStrictEqual(V.controleer(res.scenes[0], CAT, { volumeBlok: 'Gain' }).fouten, []);
     assert.ok(res.onderzoek.bronnen.every(function(b) { return /^https?:/.test(b.url); }), 'javascript:-bronnen gefilterd');
     assert.ok(res.kosten.dollar > 0);
@@ -96,4 +98,22 @@ test('analyse-endpoint: onderzoek, ontwerp, reparatie en kosten (nep-Claude)', a
   } finally {
     global.fetch = echteFetch;
   }
+});
+
+test('controle: een waarde buiten bereik wordt zonder extra Claude-ronde bijgesteld', async function() {
+  var ontwerp = require('../api/_lib/ontwerp');
+  claude._zetClient(fake);
+  fake.gezien.length = 0;
+  var s = scene();
+  s.blokken[0].instellingen[0].waarde = '140%';
+  assert.ok(!ontwerp.vraagtReparatie(V.controleer(s, CAT).fouten));
+  var meldingen = [];
+  var r = await ontwerp.controleerEnRepareer([s], { catalogus: CAT, system: 'x', start: Date.now(), onStatus: function(v) { meldingen.push(v.tekst); } });
+  assert.strictEqual(fake.gezien.length, 0, 'geen aanroep naar Claude');
+  assert.strictEqual(r.scenes[0].blokken[0].instellingen[0].waarde, '100%');
+  assert.ok(!r.scenes[0].controle.gerepareerd);
+  assert.ok(meldingen.some(function(m) { return /automatisch bijgesteld/.test(m); }));
+  var s2 = scene();
+  s2.blokken[0].instellingen.push({ parameter: 'Fuzz', waarde: '10%' });
+  assert.ok(ontwerp.vraagtReparatie(V.controleer(s2, CAT).fouten), 'onbekende parameter vraagt wel om Claude');
 });

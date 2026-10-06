@@ -167,7 +167,9 @@ async function vraagJson(params, onEvent) {
 // Volgt de JSON-stream en meldt elk nieuw blok ("blok": "...").
 function blokVolger(onStatus) {
   var tekst = '', gemeld = 0;
+  var denkt = claude.gedachtenVolger(function(zin) { onStatus && onStatus({ tekst: '💭 ' + zin }); });
   return function(ev) {
+    denkt(ev);
     if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'thinking') onStatus && onStatus({ tekst: 'Nadenken over de sound' });
     if (ev.type !== 'content_block_delta' || !ev.delta || ev.delta.type !== 'text_delta') return;
     tekst += ev.delta.text;
@@ -179,46 +181,59 @@ function blokVolger(onStatus) {
   };
 }
 
-// Controleert scenes; repareert eenmaal via Claude als er fouten zijn en de
-// tijd het toelaat; herstelt de rest zelf. Geeft { scenes, kosten }.
+// Fouten die het automatische herstel zonder verlies oplost: een waarde buiten
+// het bereik wordt naar de grens gezet. Alleen voor andere fouten (onbekend blok
+// of parameter, kapotte keten, ongeldige keuze, grenzen van het apparaat) is
+// een extra ronde met Claude nodig.
+function vraagtReparatie(fouten) {
+  return fouten.some(function(f) { return !(f.soort === 'waarde' && f.begrensd != null); });
+}
+
+// Controleert één scene; repareert eenmaal via Claude als dat nodig is en de
+// tijd het toelaat; herstelt de rest zelf.
+async function controleerScene(scene, ctx, opties) {
+  var kosten = { dollar: 0, tokens: 0 };
+  var c = Validatie.controleer(scene, ctx.catalogus, opties);
+  var gerepareerd = false;
+  if (c.fouten.length && !vraagtReparatie(c.fouten)) {
+    ctx.onStatus && ctx.onStatus({ fase: 'controle', tekst: c.fouten.length + ' waarde(n) buiten bereik in ' + scene.bas_id + ', automatisch bijgesteld' });
+  } else if (c.fouten.length && Date.now() - ctx.start < (ctx.maxMs || 170000)) {
+    ctx.onStatus && ctx.onStatus({ fase: 'controle', tekst: c.fouten.length + ' problemen gevonden in ' + scene.bas_id + ', Claude repareert ze' });
+    try {
+      var r = await vraagJson({
+        model: ctx.model || claude.MODEL,
+        max_tokens: 32000,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'medium', format: claude.jsonFormaat(sceneSchema(bloknamen(ctx.catalogus), [scene.bas_id])) },
+        system: ctx.system,
+        messages: [{ role: 'user', content: 'Deze preset bevat fouten tegen de catalogus. Corrigeer ze en geef de volledige preset opnieuw, verder ongewijzigd.\n\nPreset:\n' + JSON.stringify(scene) + '\n\nFouten:\n' + Validatie.foutTekst(c.fouten) }]
+      });
+      kosten = claude.telOp(kosten, r.kosten);
+      scene = r.data;
+      gerepareerd = true;
+    } catch (e) {
+      console.error('Reparatie mislukt:', e.message);
+    }
+  }
+  var h = Validatie.herstel(scene, ctx.catalogus, opties);
+  var na = Validatie.controleer(h.scene, ctx.catalogus, opties);
+  h.scene.controle = {
+    gerepareerd: gerepareerd,
+    aanpassingen: h.aanpassingen,
+    waarschuwingen: na.fouten.concat(na.waarschuwingen).map(function(w) { return w.melding; })
+  };
+  return { scene: h.scene, kosten: kosten };
+}
+
+// Controleert alle scenes tegelijk. Geeft { scenes, kosten }.
 async function controleerEnRepareer(scenes, ctx) {
   var vol = blokken.volumeBlok(ctx.catalogus);
   var opties = { volumeBlok: vol ? vol.naam : null, limieten: ctx.limieten };
-  var kosten = { dollar: 0, tokens: 0 };
-  var resultaat = [];
-  for (var i = 0; i < scenes.length; i++) {
-    var scene = scenes[i];
-    var c = Validatie.controleer(scene, ctx.catalogus, opties);
-    var gerepareerd = false;
-    if (c.fouten.length && Date.now() - ctx.start < (ctx.maxMs || 170000)) {
-      ctx.onStatus && ctx.onStatus({ fase: 'controle', tekst: c.fouten.length + ' problemen gevonden in ' + scene.bas_id + ', Claude repareert ze' });
-      try {
-        var r = await vraagJson({
-          model: ctx.model || claude.MODEL,
-          max_tokens: 32000,
-          thinking: { type: 'adaptive' },
-          output_config: { effort: 'medium', format: claude.jsonFormaat(sceneSchema(bloknamen(ctx.catalogus), [scene.bas_id])) },
-          system: ctx.system,
-          messages: [{ role: 'user', content: 'Deze preset bevat fouten tegen de catalogus. Corrigeer ze en geef de volledige preset opnieuw, verder ongewijzigd.\n\nPreset:\n' + JSON.stringify(scene) + '\n\nFouten:\n' + Validatie.foutTekst(c.fouten) }]
-        });
-        kosten = claude.telOp(kosten, r.kosten);
-        scene = r.data;
-        gerepareerd = true;
-        c = Validatie.controleer(scene, ctx.catalogus, opties);
-      } catch (e) {
-        console.error('Reparatie mislukt:', e.message);
-      }
-    }
-    var h = Validatie.herstel(scene, ctx.catalogus, opties);
-    var na = Validatie.controleer(h.scene, ctx.catalogus, opties);
-    h.scene.controle = {
-      gerepareerd: gerepareerd,
-      aanpassingen: h.aanpassingen,
-      waarschuwingen: na.fouten.concat(na.waarschuwingen).map(function(w) { return w.melding; })
-    };
-    resultaat.push(h.scene);
-  }
-  return { scenes: resultaat, kosten: kosten };
+  var uit = await Promise.all(scenes.map(function(scene) { return controleerScene(scene, ctx, opties); }));
+  return {
+    scenes: uit.map(function(x) { return x.scene; }),
+    kosten: uit.reduce(function(k, x) { return claude.telOp(k, x.kosten); }, { dollar: 0, tokens: 0 })
+  };
 }
 
 // Volledige analyse: onderzoek → ontwerp → controle.
@@ -235,15 +250,20 @@ async function analyse(opts) {
   if (!bassen.length) bassen = [rig.bassen[0]];
   var kosten = { dollar: 0, tokens: 0 };
 
+  var tijden = {};
+  var fase = Date.now();
+  function klaar(naam) { var nu = Date.now(); tijden[naam] = nu - fase; fase = nu; }
+
   // A. onderzoek
   status({ fase: 'onderzoek', tekst: 'Onderzoek naar de opname' });
   var profiel = null, onderzoekFout = null;
   try {
     var o = await onderzoekLib.onderzoek(opts.artist, opts.song, {
-      taal: opts.taal, extra: opts.extra, vers: opts.vers, model: ai.model, effort: ai.effort,
+      taal: opts.taal, extra: opts.extra, vers: opts.vers, model: ai.model, effort: ai.effort, diepte: opts.diepte,
       onStatus: function(v) {
         if (v.zoekt) status({ fase: 'onderzoek', tekst: 'Zoekt: ' + v.zoekt });
         else if (v.leest) status({ fase: 'onderzoek', tekst: 'Leest: ' + v.leest });
+        else if (v.denkt) status({ fase: 'onderzoek', tekst: '💭 ' + v.denkt });
         else if (v.tekst) status({ fase: 'onderzoek', tekst: v.tekst });
       }
     });
@@ -255,6 +275,8 @@ async function analyse(opts) {
     onderzoekFout = 'Onderzoek mislukt (' + e.message + '); preset op basis van eigen kennis.';
     status({ fase: 'onderzoek', tekst: onderzoekFout });
   }
+
+  klaar('onderzoek');
 
   // B. ontwerp
   status({ fase: 'ontwerp', tekst: 'Preset ontwerpen' });
@@ -269,7 +291,7 @@ async function analyse(opts) {
   var ontwerp = await vraagJson({
     model: ai.model,
     max_tokens: 48000,
-    thinking: { type: 'adaptive' },
+    thinking: { type: 'adaptive', display: 'summarized' },
     output_config: { effort: ai.effort, format: claude.jsonFormaat(analyseSchema(bloknamen(catalogus), bassen.map(function(b) { return b.id; }))) },
     system: system,
     messages: [{ role: 'user', content: vraag }]
@@ -282,10 +304,14 @@ async function analyse(opts) {
   }).filter(Boolean);
   if (!scenes.length) throw new Error('Claude leverde geen bruikbare preset');
 
+  klaar('ontwerp');
+
   // C. controle
   status({ fase: 'controle', tekst: 'Controleren tegen de catalogus' });
   var gecontroleerd = await controleerEnRepareer(scenes, { catalogus: catalogus, limieten: limieten, system: system, start: start, onStatus: status, model: ai.model });
   kosten = claude.telOp(kosten, gecontroleerd.kosten);
+  klaar('controle');
+  tijden.totaal = Date.now() - start;
 
   return {
     artiest: ontwerp.data.artiest || opts.artist,
@@ -295,7 +321,9 @@ async function analyse(opts) {
     onderzoekFout: onderzoekFout,
     kosmos: meta.kosmos,
     ai: ai,
-    kosten: kosten
+    kosten: kosten,
+    tijden: tijden,
+    diepte: profiel && profiel.uitCache ? 'cache' : (opts.diepte === 'hoog' ? 'hoog' : 'laag')
   };
 }
 
@@ -325,7 +353,7 @@ async function chat(opts) {
   var r = await vraagJson({
     model: ai.model,
     max_tokens: 32000,
-    thinking: { type: 'adaptive' },
+    thinking: { type: 'adaptive', display: 'summarized' },
     output_config: { effort: ai.effort, format: claude.jsonFormaat(chatSchema(bloknamen(catalogus), bas.id)) },
     system: system,
     messages: [{ role: 'user', content: tekst }]
@@ -376,6 +404,6 @@ async function vertaal(scene, taal, model) {
 }
 
 module.exports = {
-  analyse: analyse, chat: chat, vertaal: vertaal, controleerEnRepareer: controleerEnRepareer,
+  analyse: analyse, chat: chat, vertaal: vertaal, controleerEnRepareer: controleerEnRepareer, vraagtReparatie: vraagtReparatie,
   sceneSchema: sceneSchema, analyseSchema: analyseSchema, chatSchema: chatSchema, systeem: systeem, limietRegels: limietRegels, tekstVelden: tekstVelden
 };

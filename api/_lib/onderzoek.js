@@ -9,6 +9,15 @@ var claude = require('./claude');
 var Catalogus = require('../../shared/catalogus');
 
 var CACHE_DAGEN = 180;
+
+// Diepte van het onderzoek (keuze in de app):
+// - hoog: effort volgens de modelkeuze, meer zoekopdrachten en hele pagina's
+// - laag: effort medium, minder zoekopdrachten en ingekorte pagina's (sneller, goedkoper)
+var DIEPTE = {
+  hoog: { zoeken: 6, lezen: 4, paginaTokens: null, zoektekst: 'maximaal ongeveer 5 zoekopdrachten' },
+  laag: { zoeken: 4, lezen: 2, paginaTokens: 8000, zoektekst: 'maximaal ongeveer 3 zoekopdrachten; lees alleen de 1 of 2 meest beloftevolle pagina\'s' }
+};
+function diepte(d) { return d === 'hoog' ? 'hoog' : 'laag'; }
 var ZEKERHEID = { type: 'string', enum: ['hoog', 'middel', 'laag'] };
 
 var TONEPROFIEL_TOOL = {
@@ -135,10 +144,13 @@ function voortgangVan(blok) {
   return null;
 }
 
-// Volgt server_tool_use-blokken in de stream en meldt zoekopdrachten.
+// Volgt server_tool_use-blokken in de stream en meldt zoekopdrachten, plus de
+// samengevatte gedachten van de AI.
 function streamVolger(onStatus) {
   var open = {};
+  var denkt = claude.gedachtenVolger(function(zin) { if (onStatus) onStatus({ denkt: zin }); });
   return function(ev) {
+    denkt(ev);
     if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'server_tool_use') {
       open[ev.index] = { blok: ev.content_block, json: '' };
     } else if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'input_json_delta' && open[ev.index]) {
@@ -167,12 +179,16 @@ function schoonProfiel(p) {
   return p;
 }
 
-// Voert het onderzoek uit. opties: { taal, extra, vers, model, effort, onStatus }
+// Voert het onderzoek uit. opties: { taal, extra, vers, model, effort, diepte, onStatus }
 async function onderzoek(artist, song, opties) {
   opties = opties || {};
+  var d = diepte(opties.diepte);
+  var instelling = DIEPTE[d];
   if (!opties.vers) {
     var c = await uitCache(artist, song);
-    if (c) { c.uitCache = true; return { profiel: c, kosten: { dollar: 0, tokens: 0 } }; }
+    // Een snel (laag) onderzoek telt niet als je om een grondig onderzoek vraagt.
+    // Oudere resultaten zonder diepte waren grondig.
+    if (c && !(d === 'hoog' && c.diepte === 'laag')) { c.uitCache = true; return { profiel: c, kosten: { dollar: 0, tokens: 0 } }; }
   }
   if (opties.onStatus) opties.onStatus({ tekst: 'MusicBrainz raadplegen' });
   var hint = await musicbrainz(artist, song);
@@ -182,16 +198,17 @@ async function onderzoek(artist, song, opties) {
   var params = {
     model: opties.model || claude.MODEL,
     max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    output_config: { effort: opties.effort || 'medium' },
+    thinking: { type: 'adaptive', display: 'summarized' },
+    output_config: { effort: d === 'laag' ? 'medium' : (opties.effort || 'medium') },
     system: 'Je bent een onderzoeker voor bassounds. Je zoekt uit hoe de bas op een specifieke opname klinkt en waardoor: instrument, pickups, snaren, versterker/DI, pedalen, speeltechniek en productie. '
-      + 'Zoek gericht (maximaal ongeveer 5 zoekopdrachten), bijvoorbeeld op Equipboard, in interviews (Bass Player, Premier Guitar, No Treble), rig rundowns en betrouwbare forumdraadjes. '
+      + 'Zoek gericht (' + instelling.zoektekst + '), bijvoorbeeld op Equipboard, in interviews (Bass Player, Premier Guitar, No Treble), rig rundowns en betrouwbare forumdraadjes. '
       + 'Lees de meest relevante pagina\'s met web_fetch. Onderscheid feiten met een bron van inschattingen op gehoor of op basis van het genre, en geef dat aan met de zekerheid (hoog = bevestigd door een bron over deze opname of periode, middel = waarschijnlijk, laag = inschatting). '
       + 'Verzin geen bronnen: noem alleen URL\'s die je echt gevonden hebt. ' + taal
       + ' Rond af door de tool lever_toneprofiel aan te roepen.',
     tools: [
-      { type: 'web_search_20260209', name: 'web_search', max_uses: 6 },
-      { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 4 },
+      { type: 'web_search_20260209', name: 'web_search', max_uses: instelling.zoeken },
+      Object.assign({ type: 'web_fetch_20260209', name: 'web_fetch', max_uses: instelling.lezen },
+        instelling.paginaTokens ? { max_content_tokens: instelling.paginaTokens } : {}),
       TONEPROFIEL_TOOL
     ],
     messages: [{
@@ -220,6 +237,7 @@ async function onderzoek(artist, song, opties) {
 
   profiel = schoonProfiel(profiel);
   profiel.musicbrainz = hint;
+  profiel.diepte = d;
   profiel.datum = new Date().toISOString();
   await naarCache(artist, song, profiel);
   return { profiel: profiel, kosten: kosten };
@@ -239,5 +257,5 @@ function voorPrompt(p) {
 
 module.exports = {
   onderzoek: onderzoek, voorPrompt: voorPrompt, musicbrainz: musicbrainz, cacheKey: cacheKey,
-  streamVolger: streamVolger, TONEPROFIEL_TOOL: TONEPROFIEL_TOOL
+  streamVolger: streamVolger, TONEPROFIEL_TOOL: TONEPROFIEL_TOOL, DIEPTE: DIEPTE
 };
