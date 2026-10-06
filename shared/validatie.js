@@ -23,6 +23,7 @@
   // Geeft { fouten, waarschuwingen } terug. Fouten zijn dingen die Claude moet
   // repareren; waarschuwingen zijn alleen ter informatie.
   // opties.volumeBlok: naam van het blok dat de keten moet afsluiten.
+  // opties.limieten: grenzen van het apparaat (maxBlokken, maxRijen, maxScenes).
   function controleer(scene, catalogus, opties) {
     opties = opties || {};
     var fouten = [], waarschuwingen = [];
@@ -74,6 +75,18 @@
         if (!r.ok) fouten.push({ soort: 'songdeel', melding: 'songdeel "' + d.deel + '": ' + p.naam + ' = "' + w.waarde + '": ' + r.fout });
       });
     });
+    var lim = opties.limieten || {};
+    var aantal = (scene.blokken || []).length;
+    if (lim.maxBlokken && aantal > lim.maxBlokken) {
+      fouten.push({ soort: 'limiet', melding: 'de preset gebruikt ' + aantal + ' blokken; het apparaat heeft er maximaal ' + lim.maxBlokken + ' per preset. Combineer of schrap blokken' });
+    }
+    if (lim.maxRijen && lim.maxRijen < 2 && scene.routing === 'parallel') {
+      fouten.push({ soort: 'limiet', melding: 'het apparaat heeft maar één rij; gebruik seriële routing' });
+    }
+    var delen = (scene.songdelen || []).filter(function(d) { return String(d.footswitch || '').trim(); }).length;
+    if (lim.maxScenes && delen > lim.maxScenes) {
+      fouten.push({ soort: 'limiet', melding: delen + ' songdelen met een footswitch; maximaal ' + lim.maxScenes + ' scènes per preset' });
+    }
     if (opties.volumeBlok) {
       var laatste = scene.routing === 'parallel' && (scene.merge_naar || []).length ? scene.merge_naar[scene.merge_naar.length - 1] : (scene.chain_a || [])[(scene.chain_a || []).length - 1];
       var lb = laatste && blokBijKetenItem(scene, laatste);
@@ -86,7 +99,7 @@
 
   // Lost wat nog fout is zelf op: waarden begrenzen, onbekende parameters en
   // keten-verwijzingen weghalen, waarden netjes noteren. Geeft { scene, aanpassingen }.
-  function herstel(scene, catalogus) {
+  function herstel(scene, catalogus, opties) {
     var s = kopie(scene);
     var aanpassingen = [];
     s.blokken = (s.blokken || []).filter(function(b) {
@@ -119,6 +132,10 @@
       });
     });
     if (s.routing === 'parallel' && !s.chain_b.length) s.routing = 'serieel';
+    var lim = (opties && opties.limieten) || {};
+    if (lim.maxBlokken && s.blokken.length > lim.maxBlokken) {
+      aanpassingen.push('Let op: ' + s.blokken.length + ' blokken, het apparaat heeft er maximaal ' + lim.maxBlokken + '. Laat Claude in de chat blokken combineren.');
+    }
     (s.songdelen || []).forEach(function(d) {
       d.wijzigingen = (d.wijzigingen || []).filter(function(w) {
         var b = blokBijKetenItem(s, w.label);

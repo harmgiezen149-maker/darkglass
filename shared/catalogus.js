@@ -424,6 +424,19 @@
     return t;
   }
 
+  // Grenzen van het apparaat (in te stellen in de blok-editor; leeg = geen grens).
+  function normaliseerLimieten(l) {
+    l = l && typeof l === 'object' ? l : {};
+    function geheel(v) { var n = parseInt(v, 10); return n > 0 && n < 10000 ? n : null; }
+    var map = String(l.irMap || '').trim().replace(/\/+$/, '').slice(0, 200);
+    return {
+      maxBlokken: geheel(l.maxBlokken),
+      maxRijen: geheel(l.maxRijen),
+      maxScenes: geheel(l.maxScenes),
+      irMap: /^\/[A-Za-z0-9_.\-\/ ]*$/.test(map) ? map : ''
+    };
+  }
+
   function vergelijkVersie(a, b) {
     var pa = String(a || '0').match(/\d+/g) || [0], pb = String(b || '0').match(/\d+/g) || [0];
     for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -439,6 +452,6 @@
     normaliseerParameter: normaliseerParameter, normaliseerBlok: normaliseerBlok, normaliseerCatalogus: normaliseerCatalogus,
     alleBlokken: alleBlokken, vindBlok: vindBlok, vindParameter: vindParameter, controleerWaarde: controleerWaarde,
     paramVerschillen: paramVerschillen, vergelijk: vergelijk, pasToe: pasToe, promptTekst: promptTekst,
-    vergelijkVersie: vergelijkVersie, converteer: converteer
+    vergelijkVersie: vergelijkVersie, normaliseerLimieten: normaliseerLimieten, converteer: converteer
   };
 });

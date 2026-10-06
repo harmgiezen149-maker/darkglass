@@ -109,13 +109,24 @@ function chatSchema(bloknamen, basId) {
 }
 
 // ---------- prompt ----------
-function systeem(catalogus, meta, rig, taal, extraVariabel) {
+function limietRegels(lim) {
+  lim = lim || {};
+  var r = '';
+  if (lim.maxBlokken) r += '- Gebruik maximaal ' + lim.maxBlokken + ' blokken per preset (alle paden samen).\n';
+  if (lim.maxRijen === 1) r += '- Het apparaat heeft één rij: gebruik altijd seriële routing.\n';
+  else if (lim.maxRijen) r += '- Het apparaat heeft maximaal ' + lim.maxRijen + ' rijen; parallelle routing gebruikt er twee.\n';
+  if (lim.maxScenes) r += '- Maximaal ' + lim.maxScenes + ' songdelen met een footswitch (scènes) per preset.\n';
+  return r;
+}
+
+function systeem(catalogus, meta, rig, taal, extraVariabel, limieten) {
   var vol = blokken.volumeBlok(catalogus);
   var vast = 'Je bent een expert in basgitaar-sound design voor de Darkglass Anagram (KosmOS ' + (meta.kosmos || '') + '). '
     + 'Je vertaalt een toneprofiel van een opname naar een concrete preset met de blokken hieronder.\n\n'
     + 'Regels:\n'
     + '- Gebruik ALLEEN blokken uit de catalogus en ALLEEN hun parameters, met de exacte parameternamen.\n'
     + '- Waarden binnen het opgegeven bereik en in de opgegeven eenheid ("45%", "-3 dB", "800 Hz", "4:1"). Bij een keuzelijst precies één van de opties; bij aan/uit "On" of "Off".\n'
+    + limietRegels(limieten)
     + '- Stel alleen parameters in die ertoe doen; laat de rest weg.\n'
     + '- Geef elk blok een uniek label. chain_a (en bij parallelle routing chain_b en merge_naar) noemen de labels in signaalvolgorde. '
     + 'Bij serieel zijn chain_b en merge_naar leeg. Bij parallel zijn chain_a en chain_b de twee paden die naast elkaar lopen, en is merge_naar wat na het samenvoegen komt.\n'
@@ -172,7 +183,7 @@ function blokVolger(onStatus) {
 // tijd het toelaat; herstelt de rest zelf. Geeft { scenes, kosten }.
 async function controleerEnRepareer(scenes, ctx) {
   var vol = blokken.volumeBlok(ctx.catalogus);
-  var opties = { volumeBlok: vol ? vol.naam : null };
+  var opties = { volumeBlok: vol ? vol.naam : null, limieten: ctx.limieten };
   var kosten = { dollar: 0, tokens: 0 };
   var resultaat = [];
   for (var i = 0; i < scenes.length; i++) {
@@ -198,7 +209,7 @@ async function controleerEnRepareer(scenes, ctx) {
         console.error('Reparatie mislukt:', e.message);
       }
     }
-    var h = Validatie.herstel(scene, ctx.catalogus);
+    var h = Validatie.herstel(scene, ctx.catalogus, opties);
     var na = Validatie.controleer(h.scene, ctx.catalogus, opties);
     h.scene.controle = {
       gerepareerd: gerepareerd,
@@ -218,6 +229,7 @@ async function analyse(opts) {
   var status = opts.onStatus || function() {};
   var catalogus = await blokken.laad();
   var meta = await blokken.laadMeta();
+  var limieten = await blokken.laadLimieten();
   var rig = await rigLib.laad();
   var bassen = (opts.bassen || []).map(function(id) { return rig.bassen.find(function(b) { return b.id === id; }); }).filter(Boolean).slice(0, 3);
   if (!bassen.length) bassen = [rig.bassen[0]];
@@ -249,7 +261,7 @@ async function analyse(opts) {
   var voorbeelden = '';
   try { voorbeelden = await leren.voorbeeldenVoorPrompt({ artiest: opts.artist, genre: profiel && profiel.genre, bassen: bassen.map(function(b) { return b.id; }) }); } catch (e) { console.error('Leren mislukt:', e.message); }
   if (voorbeelden) status({ fase: 'ontwerp', tekst: 'Eerdere feedback en goedgekeurde presets meegenomen' });
-  var system = systeem(catalogus, meta, rig, opts.taal, voorbeelden);
+  var system = systeem(catalogus, meta, rig, opts.taal, voorbeelden, limieten);
   var vraag = 'Toneprofiel van "' + opts.song + '" van ' + opts.artist + ':\n' + onderzoekLib.voorPrompt(profiel) + '\n\n'
     + 'Maak een preset (scene) voor ' + (bassen.length > 1 ? 'elk van deze bassen, met waar het kan dezelfde blokstructuur en per bas aangepaste instellingen' : 'deze bas') + ':\n'
     + bassen.map(function(b) { return '- bas_id "' + b.id + '": ' + rigLib.beschrijf(b); }).join('\n')
@@ -272,7 +284,7 @@ async function analyse(opts) {
 
   // C. controle
   status({ fase: 'controle', tekst: 'Controleren tegen de catalogus' });
-  var gecontroleerd = await controleerEnRepareer(scenes, { catalogus: catalogus, system: system, start: start, onStatus: status, model: ai.model });
+  var gecontroleerd = await controleerEnRepareer(scenes, { catalogus: catalogus, limieten: limieten, system: system, start: start, onStatus: status, model: ai.model });
   kosten = claude.telOp(kosten, gecontroleerd.kosten);
 
   return {
@@ -293,13 +305,14 @@ async function chat(opts) {
   var ai = claude.keuze(opts.model, opts.effort);
   var catalogus = await blokken.laad();
   var meta = await blokken.laadMeta();
+  var limieten = await blokken.laadLimieten();
   var rig = await rigLib.laad();
   var bas = rig.bassen.find(function(b) { return b.id === opts.scene.bas_id; }) || rig.bassen[0];
   var scene = Object.assign({}, opts.scene, { bas_id: bas.id });
   delete scene.controle;
   var lessen = '';
   try { lessen = await leren.voorbeeldenVoorPrompt({ alleenLessen: true }); } catch (e) {}
-  var system = systeem(catalogus, meta, rig, opts.taal, lessen);
+  var system = systeem(catalogus, meta, rig, opts.taal, lessen, limieten);
   var eerder = (opts.geschiedenis || []).slice(-6).map(function(v) { return '- ' + String(v).slice(0, 400); });
   var tekst = 'De speler verfijnt een bestaande preset' + (opts.context ? ' voor ' + opts.context : '') + ' op de ' + rigLib.beschrijf(bas) + '.\n\n'
     + (opts.onderzoek ? 'Toneprofiel:\n' + onderzoekLib.voorPrompt(opts.onderzoek) + '\n\n' : '')
@@ -317,7 +330,7 @@ async function chat(opts) {
     system: system,
     messages: [{ role: 'user', content: tekst }]
   }, blokVolger(function(v) { status({ fase: 'ontwerp', tekst: v.tekst }); }));
-  var g = await controleerEnRepareer([r.data.scene], { catalogus: catalogus, system: system, start: start, onStatus: status, maxMs: 150000, model: ai.model });
+  var g = await controleerEnRepareer([r.data.scene], { catalogus: catalogus, limieten: limieten, system: system, start: start, onStatus: status, maxMs: 150000, model: ai.model });
   return { antwoord: r.data.antwoord, scene: g.scenes[0], ai: ai, kosten: claude.telOp(r.kosten, g.kosten) };
 }
 
@@ -364,5 +377,5 @@ async function vertaal(scene, taal, model) {
 
 module.exports = {
   analyse: analyse, chat: chat, vertaal: vertaal, controleerEnRepareer: controleerEnRepareer,
-  sceneSchema: sceneSchema, analyseSchema: analyseSchema, chatSchema: chatSchema, systeem: systeem, tekstVelden: tekstVelden
+  sceneSchema: sceneSchema, analyseSchema: analyseSchema, chatSchema: chatSchema, systeem: systeem, limietRegels: limietRegels, tekstVelden: tekstVelden
 };

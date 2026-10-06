@@ -7,6 +7,7 @@ var Catalogus = require('../../shared/catalogus');
 var KEY = 'anagram:blocks';
 var KEY_STANDAARD = 'anagram:blocks:default';
 var KEY_META = 'anagram:blocks:meta';
+var KEY_LIMIETEN = 'anagram:apparaat:limieten';
 
 async function laad() {
   if (!redis.isGeconfigureerd()) return standaard();
@@ -23,6 +24,18 @@ async function laad() {
 async function laadMeta() {
   var meta = redis.isGeconfigureerd() ? await redis.getJson(KEY_META).catch(function() { return null; }) : null;
   return Object.assign({ kosmos: '1.13', bijgewerkt: null }, meta || {});
+}
+
+// Grenzen van het apparaat (max. blokken, rijen, scènes; map voor IR-bestanden).
+async function laadLimieten() {
+  var l = redis.isGeconfigureerd() ? await redis.getJson(KEY_LIMIETEN).catch(function() { return null; }) : null;
+  return Catalogus.normaliseerLimieten(l);
+}
+
+async function bewaarLimieten(l) {
+  var n = Catalogus.normaliseerLimieten(l);
+  await redis.setJson(KEY_LIMIETEN, n);
+  return n;
 }
 
 async function bewaar(secties, meta) {
@@ -144,4 +157,4 @@ function getDefaultBlocks() {
   ];
 }
 
-module.exports = { KEY: KEY, KEY_STANDAARD: KEY_STANDAARD, KEY_META: KEY_META, laad: laad, laadMeta: laadMeta, bewaar: bewaar, standaard: standaard, promptTekst: promptTekst, volumeBlok: volumeBlok, getDefaultBlocks: getDefaultBlocks };
+module.exports = { KEY: KEY, KEY_STANDAARD: KEY_STANDAARD, KEY_META: KEY_META, KEY_LIMIETEN: KEY_LIMIETEN, laad: laad, laadMeta: laadMeta, bewaar: bewaar, laadLimieten: laadLimieten, bewaarLimieten: bewaarLimieten, standaard: standaard, promptTekst: promptTekst, volumeBlok: volumeBlok, getDefaultBlocks: getDefaultBlocks };

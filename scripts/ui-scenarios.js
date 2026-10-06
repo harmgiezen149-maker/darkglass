@@ -274,7 +274,24 @@ async function anagramFormaat(page, basis, stap) {
   stap('download in het officiële presetformaat is geldig', /\.anagram\.json$/.test(download.suggestedFilename()) && A.controleer(json).length === 0 && json.type === 'preset' && json.version === 1, A.controleer(json).join('; '));
   stap('songdelen staan als scènes in het bestand', JSON.stringify(json.preset.sceneNames) === '{"1":"Refrein"}');
   var info = await page.locator('#anagramInfo').innerText();
-  stap('uitleg over versleuteling en de Anagram Editor zichtbaar', /Anagram Editor/.test(info) && /officiële id/.test(info));
+  stap('uitleg over de versleuteling zichtbaar', /versleuteld/.test(info) && /officiële id/.test(info) && !/Editor/.test(info));
+
+  // Apparaatgrenzen instellen in de blok-editor en weer leegmaken
+  await page.goto(basis + '/blocks.html');
+  await page.waitForSelector('#limietenPanel');
+  await page.fill('#limMaxBlokken', '3');
+  await page.fill('#limIrMap', '/test/irs/');
+  await page.click('#btnLimieten');
+  await page.waitForFunction(function() { return /grenzen opgeslagen/.test(document.getElementById('statusBar').textContent); });
+  var l = await page.evaluate(function() { return fetch('/api/blocks').then(function(r) { return r.json(); }); });
+  stap('apparaatgrenzen worden opgeslagen', l.limieten.maxBlokken === 3 && l.limieten.irMap === '/test/irs');
+  await page.reload();
+  await page.waitForFunction(function() { return document.getElementById('limMaxBlokken').value === '3'; });
+  stap('apparaatgrenzen staan na herladen weer in het paneel', true);
+  await page.fill('#limMaxBlokken', '');
+  await page.fill('#limIrMap', '');
+  await page.click('#btnLimieten');
+  await page.waitForFunction(function() { return /grenzen opgeslagen/.test(document.getElementById('statusBar').textContent); });
 }
 
 module.exports.push(anagramFormaat);

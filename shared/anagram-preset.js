@@ -2,11 +2,11 @@
 // PRESET-FORMAT.md, versie 1): een JSON-bestand met signaalketen, blokken,
 // parameters en scènes.
 //
-// Darkglass heeft het formaat gedocumenteerd, maar .angr-bestanden uit de Suite
-// zijn versleuteld; die versleuteling is niet openbaar en wordt hier niet
-// nagebootst. Deze export is bedoeld voor de aangekondigde Anagram Editor en
-// voor eigen archief. Hoe volledig hij is, hangt af van de officiële id's
-// (LV2-URI per blok, symbool per parameter) in de catalogus.
+// .angr-bestanden uit de Suite zijn versleuteld; die versleuteling is niet
+// openbaar en wordt hier niet nagebootst. Deze export is een exacte, leesbare
+// weergave van een preset in het gedocumenteerde formaat. Hoe volledig hij is,
+// hangt af van de officiële id's (LV2-URI per blok, symbool per parameter) in
+// de catalogus en de apparaatgrenzen uit de blok-editor.
 //
 // Werkt in de browser (window.AnagramPreset) en in Node.
 (function(root, factory) {
@@ -38,8 +38,8 @@
   }
 
   // Zet een waarde uit de app om naar een getal zoals het presetformaat dat
-  // opslaat. Aanname tot de Editor er is: knoppen in de eenheid van de
-  // catalogus (45% → 45), aan/uit als 1/0, keuzes als volgnummer (0, 1, 2…).
+  // opslaat: knoppen in hun eigen eenheid (45% → 45, -3 dB → -3), aan/uit als
+  // 1/0, keuzes als volgnummer (0, 1, 2…).
   function waardeAlsGetal(def, waarde) {
     var r = Catalogus.controleerWaarde(def, waarde);
     if (!r.ok) return { fout: r.fout };
@@ -69,11 +69,20 @@
     return uit;
   }
 
+  // Bestandsnaam voor een bestandskeuze (IR): map uit de apparaatgrenzen +
+  // de gekozen optie, als die op een bestandsnaam lijkt.
+  function bestandspad(optie, irMap) {
+    var naam = String(optie || '').trim();
+    if (!irMap || !/\.(wav|aiff?|flac)$/i.test(naam) || /[\/\\]/.test(naam)) return null;
+    return irMap + '/' + naam;
+  }
+
   // scene: een preset (scene) uit de app; catalogus: de bloklijst.
-  // opties: { naam, uuid }
+  // opties: { naam, uuid, limieten }
   // Geeft { preset, waarschuwingen, volledig, telling } terug.
   function maak(scene, catalogus, opties) {
     opties = opties || {};
+    var lim = Catalogus.normaliseerLimieten ? Catalogus.normaliseerLimieten(opties.limieten) : (opties.limieten || {});
     var waarschuwingen = [];
     var telling = { blokken: 0, metUri: 0, parameters: 0, metSymbool: 0 };
     var chains = {};
@@ -108,8 +117,10 @@
         // Bestandskeuzes (IR's) zijn in het formaat een "property" met bestandsnaam.
         if (/\b(ir|file|bestand)\b/i.test(pdef.naam) && pdef.type === 'keuze') {
           var keuze = Catalogus.controleerWaarde(pdef, ins.waarde);
-          props[String(++propNr)] = { name: pdef.naam, uri: 'urn:tone-architect:bestand', value: keuze.ok ? keuze.waarde : String(ins.waarde) };
-          waarschuwingen.push((b.label || b.blok) + ': ' + pdef.naam + ' is een bestandskeuze; het juiste pad op de Anagram is nog onbekend');
+          var optie = keuze.ok ? keuze.waarde : String(ins.waarde);
+          var pad = bestandspad(optie, lim.irMap);
+          props[String(++propNr)] = { name: pdef.naam, uri: 'urn:tone-architect:bestand', value: pad || optie };
+          if (!pad) waarschuwingen.push((b.label || b.blok) + ': ' + pdef.naam + ' is een bestandskeuze; vul in de blok-editor de map voor IR-bestanden in en gebruik bestandsnamen als opties');
           return;
         }
         var w = waardeAlsGetal(pdef, ins.waarde);
@@ -159,6 +170,10 @@
       });
     });
 
+    if (lim.maxBlokken && telling.blokken > lim.maxBlokken) waarschuwingen.push(telling.blokken + ' blokken, maar het apparaat heeft er maximaal ' + lim.maxBlokken + ' per preset');
+    var rijen = Object.keys(chains).length;
+    if (lim.maxRijen && rijen > lim.maxRijen) waarschuwingen.push(rijen + ' rijen, maar het apparaat heeft er maximaal ' + lim.maxRijen);
+    if (lim.maxScenes && sceneNr > lim.maxScenes) waarschuwingen.push(sceneNr + ' scènes, maar het apparaat heeft er maximaal ' + lim.maxScenes + ' per preset');
     if (telling.parameters > telling.metSymbool) {
       waarschuwingen.push((telling.parameters - telling.metSymbool) + ' van de ' + telling.parameters + ' parameters hebben nog geen officieel symbool; het symbool is afgeleid van de naam');
     }
@@ -176,7 +191,7 @@
       version: VERSIE
     };
     var volledig = telling.blokken > 0 && telling.metUri === telling.blokken && telling.metSymbool === telling.parameters
-      && !waarschuwingen.some(function(w) { return /overgeslagen|bestandskeuze/.test(w); });
+      && !waarschuwingen.some(function(w) { return /overgeslagen|bestandskeuze|maximaal/.test(w); });
     return { preset: preset, waarschuwingen: waarschuwingen, volledig: volledig, telling: telling };
   }
 
@@ -261,5 +276,5 @@
     return f;
   }
 
-  return { VERSIE: VERSIE, maak: maak, controleer: controleer, geradenSymbool: geradenSymbool, waardeAlsGetal: waardeAlsGetal, nieuweUuid: nieuweUuid };
+  return { VERSIE: VERSIE, maak: maak, controleer: controleer, geradenSymbool: geradenSymbool, waardeAlsGetal: waardeAlsGetal, bestandspad: bestandspad, nieuweUuid: nieuweUuid };
 });

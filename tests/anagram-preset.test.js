@@ -120,3 +120,55 @@ test('catalogus: symbolen en officiële id blijven bewaard, ook na een handleidi
   assert.strictEqual(b.parameters[0].symbol, 'drive');
   assert.strictEqual(b.parameters.length, 2);
 });
+
+// ---------- apparaatgrenzen ----------
+var V = require('../shared/validatie');
+var ontwerp = require('../api/_lib/ontwerp');
+var h = require('./helpers');
+
+test('grenzen: normaliseren accepteert alleen positieve getallen en een absoluut pad', function() {
+  assert.deepStrictEqual(C.normaliseerLimieten({ maxBlokken: '5', maxRijen: 0, maxScenes: 'x', irMap: '/data/ir/' }), { maxBlokken: 5, maxRijen: null, maxScenes: null, irMap: '/data/ir' });
+  assert.strictEqual(C.normaliseerLimieten({ irMap: '../../etc' }).irMap, '');
+  assert.strictEqual(C.normaliseerLimieten({ irMap: '/a;rm -rf' }).irMap, '');
+});
+
+test('grenzen: de controle meldt te veel blokken, rijen en scènes', function() {
+  var s = scene({ routing: 'parallel', chain_a: ['Microtubes B3K', 'Gain'], chain_b: ['Compressor/Limiter'], merge_naar: [],
+    songdelen: [{ deel: 'A', footswitch: 'FS1', wijzigingen: [] }, { deel: 'B', footswitch: 'FS2', wijzigingen: [] }] });
+  var soorten = V.controleer(s, CAT, { limieten: { maxBlokken: 2, maxRijen: 1, maxScenes: 1 } }).fouten.filter(function(f) { return f.soort === 'limiet'; });
+  assert.strictEqual(soorten.length, 3, JSON.stringify(soorten));
+  assert.deepStrictEqual(V.controleer(scene(), CAT, { limieten: { maxBlokken: 3 } }).fouten, []);
+  var hersteld = V.herstel(scene(), CAT, { limieten: { maxBlokken: 2 } });
+  assert.ok(hersteld.aanpassingen.some(function(a) { return /maximaal 2/.test(a); }));
+});
+
+test('grenzen: de AI krijgt ze als regel mee', function() {
+  var t = ontwerp.systeem(CAT, { kosmos: '1.18' }, require('../api/_lib/rig').standaardRig(), 'nl', '', { maxBlokken: 7, maxRijen: 1, maxScenes: 4 })[0].text;
+  assert.ok(/maximaal 7 blokken/.test(t) && /één rij/.test(t) && /Maximaal 4 songdelen/.test(t), t.slice(0, 600));
+  var zonder = ontwerp.systeem(CAT, { kosmos: '1.18' }, require('../api/_lib/rig').standaardRig(), 'nl')[0].text;
+  assert.ok(!/blokken per preset/.test(zonder));
+});
+
+test('grenzen: export gebruikt de IR-map en waarschuwt bij overschrijding', function() {
+  var cat = C.normaliseerCatalogus([{ sectie: 'CAB', blokken: [{ naam: 'IR Loader', uri: 'urn:x:ir', parameters: 'IR File [ir] (Mijn kast.wav/Fabriek)' }] }]);
+  var s = scene({ chain_a: ['IR Loader'], blokken: [{ label: 'IR Loader', blok: 'IR Loader', instellingen: [{ parameter: 'IR File', waarde: 'Mijn kast.wav' }] }] });
+  var r = A.maak(s, cat, { naam: 'ir', limieten: { irMap: '/mijn/irs' } });
+  assert.strictEqual(r.preset.preset.chains['1'].blocks['1'].properties['1'].value, '/mijn/irs/Mijn kast.wav');
+  assert.ok(!r.waarschuwingen.some(function(w) { return /bestandskeuze/.test(w); }));
+  var teVeel = A.maak(scene(), CAT, { naam: 'x', limieten: { maxBlokken: 2 } });
+  assert.ok(teVeel.waarschuwingen.some(function(w) { return /maximaal 2/.test(w); }) && !teVeel.volledig);
+});
+
+test('grenzen: opslaan via de API vereist beheer en komt terug bij het laden', async function() {
+  h.resetRedis();
+  process.env.ADMIN_WACHTWOORD = 'geheim';
+  var auth = require('../api/_lib/auth');
+  var cookie = 'dg_admin=' + encodeURIComponent(auth._teken('admin', Math.floor(Date.now() / 1000) + 600));
+  var api = require('../api/blocks');
+  var zonder = await h.roep(api, { method: 'POST', body: { limieten: { maxBlokken: 5 } } });
+  assert.strictEqual(zonder.statusCode, 401);
+  var met = await h.roep(api, { method: 'POST', body: { limieten: { maxBlokken: 5, irMap: '/x/y' } }, headers: { cookie: cookie } });
+  assert.strictEqual(met.statusCode, 200, JSON.stringify(met.body));
+  var g = await h.roep(api, { method: 'GET' });
+  assert.deepStrictEqual(g.body.limieten, { maxBlokken: 5, maxRijen: null, maxScenes: null, irMap: '/x/y' });
+});
