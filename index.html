@@ -75,6 +75,15 @@
         <div class="ai-hint" id="aiHint"></div>
       </div>
 
+      <div class="field-group">
+        <label class="field-label" for="diepteKeuze" data-i18n="onderzoekDiepte">ONDERZOEK</label>
+        <select id="diepteKeuze" class="text-input ai-select">
+          <option value="laag" data-i18n="diepteLaag">Laag: sneller en goedkoper</option>
+          <option value="hoog" data-i18n="diepteHoog">Hoog: grondig (meer bronnen)</option>
+        </select>
+        <div class="ai-hint" id="diepteHint"></div>
+      </div>
+
       <label class="check-label"><input type="checkbox" id="versOnderzoek" /> <span data-i18n="versOnderzoek">Opnieuw onderzoeken (cache negeren)</span></label>
 
       <button class="analyze-btn" id="analyzeBtn" onclick="analyzeTone()">

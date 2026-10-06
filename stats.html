@@ -39,6 +39,11 @@
     .stat-card .sub { font-size: 0.62rem; color: var(--text-dimmer); margin-top: 0.4rem; }
 
     .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1.5rem; }
+    .tijd-tabel { width: 100%; border-collapse: collapse; font-size: 0.7rem; margin-bottom: 0.75rem; }
+    .tijd-tabel th, .tijd-tabel td { text-align: left; padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .tijd-tabel th { color: var(--text-dimmer); font-weight: 400; letter-spacing: 0.1em; font-size: 0.6rem; }
+    .tijd-sub { font-size: 0.6rem; letter-spacing: 0.15em; color: var(--text-dimmer); margin: 0.5rem 0; }
+    #snelheid { overflow-x: auto; }
     .panel-label { font-family: var(--font-a); font-size: 0.65rem; letter-spacing: 0.3em; color: var(--accent); padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
 
     .bass-bars { display: flex; flex-direction: column; gap: 0.875rem; }
@@ -121,6 +126,11 @@
       </div>
       <div class="bass-bars" id="kostSoorten" style="margin-top:1rem"></div>
       <div class="bass-bars" id="kostModellen" style="margin-top:1rem"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">SNELHEID (LAATSTE 50 ANALYSES)</div>
+      <div id="snelheid" class="last-event">Nog geen metingen. Na de volgende analyse verschijnen hier de tijden.</div>
     </div>
 
     <div class="panel">
@@ -235,6 +245,9 @@ function toonDashboard(d) {
     + '<span>' + d.dagen[14].datum.substring(5) + '</span>'
     + '<span>' + d.dagen[29].datum.substring(5) + '</span>';
 
+  // Snelheid per onderzoeksdiepte en de laatste analyses
+  toonSnelheid(d.tijden || []);
+
   // Laatste event
   if (d.laatsteEvent) {
     var datum = new Date(d.laatsteEvent.ts);
@@ -242,6 +255,29 @@ function toonDashboard(d) {
     var metaStr = d.laatsteEvent.meta && d.laatsteEvent.meta.bass ? ' · bas: ' + d.laatsteEvent.meta.bass : '';
     document.getElementById('lastEvent').innerHTML = '<strong>' + esc(String(d.laatsteEvent.event).toUpperCase()) + '</strong> · ' + esc(dStr + metaStr);
   }
+}
+
+function sec(ms) { return Math.round((ms || 0) / 1000) + ' s'; }
+
+function toonSnelheid(lijst) {
+  var el = document.getElementById('snelheid');
+  if (!lijst.length) return;
+  var groepen = { laag: 'LAAG', hoog: 'HOOG', cache: 'UIT CACHE' };
+  var h = '<div class="tijd-sub">GEMIDDELD PER ONDERZOEKSDIEPTE</div><table class="tijd-tabel"><tr><th>ONDERZOEK</th><th>AANTAL</th><th>TOTAAL</th><th>ONDERZOEK</th><th>ONTWERP</th><th>CONTROLE</th></tr>';
+  Object.keys(groepen).forEach(function(g) {
+    var rij = lijst.filter(function(x) { return x.diepte === g; });
+    if (!rij.length) return;
+    var gem = function(k) { return rij.reduce(function(a, x) { return a + (x[k] || 0); }, 0) / rij.length; };
+    h += '<tr><td>' + groepen[g] + '</td><td>' + rij.length + '</td><td><strong>' + sec(gem('totaal')) + '</strong></td><td>' + sec(gem('onderzoek')) + '</td><td>' + sec(gem('ontwerp')) + '</td><td>' + sec(gem('controle')) + '</td></tr>';
+  });
+  h += '</table><div class="tijd-sub">LAATSTE 10 (ONDERZOEK / ONTWERP / CONTROLE)</div><table class="tijd-tabel">';
+  lijst.slice(0, 10).forEach(function(x) {
+    var m = (x.model || '').replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2');
+    h += '<tr><td>' + esc(new Date(x.datum).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + '</td>'
+      + '<td><strong>' + sec(x.totaal) + '</strong></td><td>' + sec(x.onderzoek) + ' / ' + sec(x.ontwerp) + ' / ' + sec(x.controle) + '</td>'
+      + '<td>' + esc((x.diepte || '').toUpperCase()) + '</td><td>' + esc(m + ' · ' + (x.effort || '')) + '</td><td>$' + (x.dollar || 0).toFixed(2) + '</td></tr>';
+  });
+  el.innerHTML = h + '</table>';
 }
 
 // Direct proberen: werkt als er al een beheerderssessie is

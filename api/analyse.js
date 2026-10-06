@@ -4,10 +4,11 @@ var limiet = require('./_lib/ratelimit');
 var claude = require('./_lib/claude');
 var sse = require('./_lib/sse');
 var ontwerp = require('./_lib/ontwerp');
+var tijden = require('./_lib/tijden');
 
 function kort(s, n) { return String(s || '').trim().slice(0, n); }
 
-// POST { artist, song, bassen: [ids], extra, taal, vers, model, effort } → Server-Sent Events:
+// POST { artist, song, bassen: [ids], extra, taal, vers, model, effort, diepte: 'hoog'|'laag' } → Server-Sent Events:
 //   data: {"fase": "onderzoek"|"ontwerp"|"controle", "tekst": "..."}   voortgang
 //   data: {"onderzoek": {...}}                                        toneprofiel zodra het klaar is
 //   data: {"resultaat": {artiest, song, scenes, onderzoek, kosten}}
@@ -30,13 +31,14 @@ module.exports = async function handler(req, res) {
       artist: artist, song: song,
       bassen: Array.isArray(b.bassen) ? b.bassen.slice(0, 3).map(String) : [],
       extra: kort(b.extra, 1500), taal: b.taal === 'en' ? 'en' : 'nl', vers: b.vers === true,
-      model: b.model, effort: b.effort,
+      model: b.model, effort: b.effort, diepte: b.diepte === 'hoog' ? 'hoog' : 'laag',
       onStatus: function(v) {
         if (v.onderzoek) s.zend({ onderzoek: v.onderzoek });
         if (v.tekst) s.zend({ fase: v.fase, tekst: v.tekst });
       }
     });
     await claude.registreerKosten('analyse', r.kosten, r.ai.model);
+    await tijden.registreer(r);
     s.zend({ resultaat: r });
   } catch (e) {
     console.error('Analyse mislukt:', e);

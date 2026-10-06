@@ -94,7 +94,34 @@ document.getElementById('aiKeuze').addEventListener('change', function() {
   zetAiHint();
 });
 
+// =====================
+// ONDERZOEKSDIEPTE
+// =====================
+var DIEPTE_OPSLAG = 'dg_onderzoek';
+
+function huidigeDiepte() {
+  var el = document.getElementById('diepteKeuze');
+  return el && el.value === 'hoog' ? 'hoog' : 'laag';
+}
+
+function zetDiepteHint() {
+  var hint = document.getElementById('diepteHint');
+  if (hint) hint.textContent = t('diepteHint_' + huidigeDiepte());
+}
+
+(function() {
+  var el = document.getElementById('diepteKeuze');
+  if (!el) return;
+  try { if (localStorage.getItem(DIEPTE_OPSLAG) === 'hoog') el.value = 'hoog'; } catch (e) {}
+  el.addEventListener('change', function() {
+    try { localStorage.setItem(DIEPTE_OPSLAG, huidigeDiepte()); } catch (e) {}
+    zetDiepteHint();
+  });
+  zetDiepteHint();
+})();
+
 function onTaalGewijzigd() {
+  zetDiepteHint();
   renderAiKeuze();
   if (RIG.bassen.length) renderBasSelector();
   if (huidig && !bezig) renderHuidig();
@@ -191,7 +218,8 @@ function analyzeTone() {
   var vers = document.getElementById('versOnderzoek');
   sseVerzoek('/api/analyse', {
     artist: artist, song: song, bassen: bassen, extra: document.getElementById('extraInput').value.trim(),
-    taal: currentLang, vers: !!(vers && vers.checked), model: huidigeAi().model, effort: huidigeAi().effort
+    taal: currentLang, vers: !!(vers && vers.checked), model: huidigeAi().model, effort: huidigeAi().effort,
+    diepte: huidigeDiepte()
   }, function(ev) {
     if (ev.onderzoek) onderzoekHtml = PresetRender.renderOnderzoek(ev.onderzoek, { t: t, open: true });
     if (ev.tekst) { log.push(ev.tekst); toon(ev.tekst); }
@@ -202,7 +230,8 @@ function analyzeTone() {
     renderHuidig();
     document.getElementById('chatPanel').classList.remove('hidden');
     document.getElementById('chatMessages').innerHTML = '';
-    var details = [r.ai ? aiTekst(r.ai) : '', r.kosten && r.kosten.dollar ? '$' + r.kosten.dollar.toFixed(2) : ''].filter(Boolean).join(' \u00b7 ');
+    var details = [r.ai ? aiTekst(r.ai) : '', r.kosten && r.kosten.dollar ? '$' + r.kosten.dollar.toFixed(2) : '',
+      r.tijden && r.tijden.totaal ? t('klaarIn') + ' ' + Math.round(r.tijden.totaal / 1000) + ' s' : ''].filter(Boolean).join(' \u00b7 ');
     addMsg('assistant', (isMeerScene() ? t('dualPresetKlaar') : t('presetKlaar')) + (details ? ' (' + details + ')' : ''));
     if (vers) vers.checked = false;
   }).catch(function(e) {

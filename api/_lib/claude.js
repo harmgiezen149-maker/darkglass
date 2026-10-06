@@ -62,6 +62,37 @@ async function voltooi(params, opties) {
   throw new Error('Claude bleef pauzeren (pause_turn)');
 }
 
+// Volgt de samengevatte gedachten (thinking display "summarized") in de stream
+// en meldt hele zinnen, hooguit één per interval, zodat je ziet waar de AI mee
+// bezig is in plaats van naar een stille wachtrij te kijken.
+function gedachtenVolger(onTekst, opties) {
+  opties = opties || {};
+  var interval = opties.interval == null ? 2500 : opties.interval;
+  var buffer = '', laatst = 0;
+  function meld(zin) {
+    zin = zin.replace(/\s+/g, ' ').replace(/^[#*\-\s]+/, '').trim();
+    if (zin.length < 20) return;
+    var nu = Date.now();
+    if (nu - laatst < interval) return;
+    laatst = nu;
+    onTekst(zin.length > 160 ? zin.slice(0, 157) + '…' : zin);
+  }
+  return function(ev) {
+    if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'thinking_delta') {
+      buffer += ev.delta.thinking || '';
+      var m;
+      while ((m = buffer.match(/^([\s\S]*?[.!?])(\s+|$)/)) && m[2] !== '') {
+        meld(m[1]);
+        buffer = buffer.slice(m[0].length);
+      }
+      if (buffer.length > 400) { meld(buffer); buffer = ''; }
+    } else if (ev.type === 'content_block_stop' && buffer) {
+      meld(buffer);
+      buffer = '';
+    }
+  };
+}
+
 // Haalt de JSON uit een antwoord met output_config.format.
 function jsonUit(msg) {
   if (msg.stop_reason === 'refusal') throw new Error('Claude heeft het verzoek geweigerd');
@@ -132,6 +163,6 @@ async function registreerKosten(soort, kosten, model) {
 
 module.exports = {
   MODEL: MODEL, PRIJS: PRIJS, client: client, _zetClient: _zetClient, metFallback: metFallback,
-  keuze: keuze, voltooi: voltooi, jsonUit: jsonUit, toolInput: toolInput, jsonFormaat: jsonFormaat,
+  keuze: keuze, voltooi: voltooi, jsonUit: jsonUit, toolInput: toolInput, jsonFormaat: jsonFormaat, gedachtenVolger: gedachtenVolger,
   kostenVan: kostenVan, telOp: telOp, registreerKosten: registreerKosten, Anthropic: Anthropic
 };
