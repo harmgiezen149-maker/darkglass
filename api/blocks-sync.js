@@ -2,6 +2,7 @@ var http = require('./_lib/http');
 var auth = require('./_lib/auth');
 var redis = require('./_lib/redis');
 var sync = require('./_lib/sync');
+var fouten = require('./_lib/fouten');
 
 // GET                  → toestand van de sync (status, inventaris, voorstellen) — beheer
 // GET ?cron=1          → wekelijkse controle via Vercel Cron (CRON_SECRET)
@@ -50,7 +51,8 @@ module.exports = async function handler(req, res) {
     }
   } catch (e) {
     console.error('Sync-fout:', e);
-    return http.stuur(res, 500, { error: e.message });
+    await fouten.registreer('blok-sync', e);
+    return http.stuur(res, 500, { error: fouten.korteMelding(e), foutDetail: fouten.beschrijf(e) });
   }
 };
 

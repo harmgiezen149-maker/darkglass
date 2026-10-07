@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
     s.zend({ resultaat: r });
   } catch (e) {
     console.error('Analyse mislukt:', e);
-    s.zend({ fout: sse.foutMelding(e) });
+    await sse.zendFout(s, 'analyse', e);
   }
   s.einde();
 };

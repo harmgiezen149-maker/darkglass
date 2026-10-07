@@ -46,6 +46,11 @@ function inhoud(params) {
 }
 
 function maakBericht(params) {
+  // Testhaak: een artiest "FOUT529" laat de API een overbelasting-fout geven.
+  if (/FOUT529/.test(JSON.stringify(params.messages))) {
+    var Anthropic = require('@anthropic-ai/sdk');
+    throw Anthropic.APIError.generate(529, { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' }, request_id: 'req_nep529' }, undefined, new Headers({ 'request-id': 'req_nep529' }));
+  }
   module.exports.gezien.push({
     model: params.model, effort: params.output_config && params.output_config.effort,
     display: params.thinking && params.thinking.display,
