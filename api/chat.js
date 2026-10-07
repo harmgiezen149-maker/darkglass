@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
     s.zend({ resultaat: r });
   } catch (e) {
     console.error('Chat mislukt:', e);
-    s.zend({ fout: sse.foutMelding(e) });
+    await sse.zendFout(s, b.modus === 'vertaal' ? 'vertalen' : 'chat', e);
   }
   s.einde();
 };

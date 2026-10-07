@@ -326,3 +326,33 @@ async function snelheid(page, basis, stap) {
 }
 
 module.exports.push(snelheid);
+
+async function apiStatusEnFouten(page, basis, stap) {
+  await page.goto(basis + '/');
+  await page.waitForFunction(function() { return /API OK ⓘ/.test(document.getElementById('apiStatus').textContent); }, null, { timeout: 5000 });
+  stap('storing bij de Console geeft geen rode API-storing', !(await page.locator('#apiStatus.err').count()));
+  await page.click('#apiStatus');
+  await page.waitForSelector('#apiStatusVenster .status-incident');
+  var venster = await page.locator('#apiStatusVenster').innerText();
+  stap('statusvenster toont het incident, de update en dat de app er niet door geraakt wordt',
+    /Elevated errors on platform\.claude\.com/.test(venster) && /investigating this issue/.test(venster) && /raakt de app niet/.test(venster) && /gedeeltelijke storing/.test(venster));
+  await page.click('#statusSluit');
+
+  await page.waitForSelector('#bassSelector .bass-btn');
+  await page.fill('#artistInput', 'FOUT529');
+  await page.fill('#songInput', 'Test');
+  await page.click('#analyzeBtn');
+  await page.waitForSelector('#outputContent .fout-detail', { timeout: 15000 });
+  var uit = await page.locator('#outputContent').innerText();
+  stap('mislukte analyse toont de echte fout met uitleg', /529/.test(uit) && /overloaded_error/.test(uit) && /overbelast/.test(uit));
+  await page.click('#outputContent .fout-detail summary');
+  stap('technische details met request-id', /req_nep529/.test(await page.locator('#outputContent .fout-detail').innerText()));
+  await page.waitForFunction(function() { return /API FOUT/.test(document.getElementById('apiStatus').textContent); }, null, { timeout: 5000 });
+  stap('lampje meldt een recente fout van de app zelf', true);
+  await page.click('#outputContent .fout-detail button');
+  await page.waitForFunction(function() { var v = document.getElementById('apiStatusVenster'); return v && /req_nep529/.test(v.textContent); }, null, { timeout: 5000 });
+  stap('statusvenster toont de laatste fouten van de app', /LAATSTE FOUTEN/.test(await page.locator('#apiStatusVenster').innerText()));
+  await page.click('#statusSluit');
+}
+
+module.exports.push(apiStatusEnFouten);

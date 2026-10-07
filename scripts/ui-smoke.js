@@ -5,6 +5,24 @@
 
 process.env.ADMIN_WACHTWOORD = process.env.ADMIN_WACHTWOORD || 'beheer-test';
 process.env.DG_FAKE_CLAUDE = '1';
+// De statuspagina van Anthropic wordt nagebootst: storing bij de Console, API in orde.
+var echteFetch = global.fetch;
+global.fetch = function(url) {
+  if (/status\.anthropic\.com/.test(String((url && url.url) || url))) {
+    return Promise.resolve({ ok: true, status: 200, json: function() { return Promise.resolve({
+      components: [
+        { name: 'claude.ai', status: 'operational' },
+        { name: 'Claude Console (platform.claude.com)', status: 'partial_outage' },
+        { name: 'Claude API (api.anthropic.com)', status: 'operational' }
+      ],
+      incidents: [{ name: 'Elevated errors on platform.claude.com', status: 'investigating', impact: 'minor',
+        components: [{ name: 'Claude Console (platform.claude.com)' }],
+        incident_updates: [{ body: 'We are currently investigating this issue.', updated_at: new Date().toISOString() }] }]
+    }); } });
+  }
+  return echteFetch.apply(this, arguments);
+};
+
 var server = require('./dev-server');
 var { chromium } = require('playwright');
 

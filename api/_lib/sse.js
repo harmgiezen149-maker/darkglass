@@ -1,5 +1,5 @@
 // Server-Sent Events naar de browser: elke regel "data: <json>".
-var claude = require('./claude');
+var fouten = require('./fouten');
 
 function start(res) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -13,10 +13,16 @@ function start(res) {
   };
 }
 
+// Korte melding met uitleg (zie fouten.js), voor het "fout"-event.
 function foutMelding(e) {
-  if (e instanceof claude.Anthropic.RateLimitError) return 'Claude is even overbelast, probeer het zo opnieuw.';
-  if (e instanceof claude.Anthropic.APIError) return 'Claude API-fout (' + e.status + '): ' + (e.message || '').slice(0, 200);
-  return e && e.message ? e.message : 'Interne fout';
+  return fouten.korteMelding(e);
 }
 
-module.exports = { start: start, foutMelding: foutMelding };
+// Zendt een fout met details (status, type, request-id, uitleg) en bewaart hem
+// voor het API-statusvenster.
+async function zendFout(s, waar, e) {
+  s.zend({ fout: foutMelding(e), foutDetail: Object.assign({ tijd: new Date().toISOString(), waar: waar }, fouten.beschrijf(e)) });
+  await fouten.registreer(waar, e);
+}
+
+module.exports = { start: start, foutMelding: foutMelding, zendFout: zendFout };

@@ -416,3 +416,33 @@ footer { padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.6
 .anagram-info .anagram-telling { font-size: 0.68rem; letter-spacing: 0.05em; color: var(--text-dimmer); }
 .anagram-info summary { cursor: pointer; color: var(--accent3); font-size: 0.68rem; }
 .anagram-info ul { margin: 0.4rem 0 0 1.1rem; }
+
+/* API-status: klikbaar lampje en statusvenster */
+.api-status { cursor: pointer; }
+.api-status.onbekend { color: var(--text-dimmer); border-color: var(--border); background: transparent; }
+.api-status.onbekend .api-status-dot { background: var(--text-dimmer); }
+.status-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.status-modal { background: var(--bg2); border: 1px solid var(--border-bright); border-radius: 6px; padding: 1.25rem; width: 100%; max-width: 560px; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; }
+.status-titel { font-family: var(--font-a); font-weight: 700; letter-spacing: 0.2em; color: var(--accent); font-size: 0.8rem; }
+.status-kop { font-size: 0.85rem; line-height: 1.5; padding: 0.6rem 0.8rem; border-radius: var(--radius); border: 1px solid var(--border); }
+.status-kop.status-ok, .status-kop.status-elders { border-color: rgba(0,229,176,0.35); }
+.status-kop.status-melding { border-color: rgba(245,166,35,0.5); color: #f5a623; }
+.status-kop.status-storing { border-color: rgba(255,77,109,0.5); color: var(--accent2); }
+.status-sectie { font-family: var(--font-a); font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dimmer); margin-top: 0.4rem; }
+.status-klein { font-size: 0.68rem; color: var(--text-dim); line-height: 1.5; }
+.status-klein a { color: var(--accent); }
+.status-incident, .status-fout { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.8rem; font-size: 0.75rem; line-height: 1.5; display: flex; flex-direction: column; gap: 0.25rem; }
+.status-incident.raakt-api { border-color: rgba(255,77,109,0.5); }
+.status-incident p { color: var(--text-dim); }
+.status-tabel { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+.status-tabel td { padding: 0.3rem 0.2rem; border-bottom: 1px solid var(--border); }
+.status-tabel td:last-child { text-align: right; color: var(--accent); }
+.status-tabel td.st-degraded_performance, .status-tabel td.st-under_maintenance { color: #f5a623; }
+.status-tabel td.st-partial_outage, .status-tabel td.st-major_outage { color: var(--accent2); }
+.status-knoppen { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.status-knoppen a.actie-btn { text-decoration: none; }
+.fout-detail { margin-top: 0.75rem; border: 1px solid rgba(255,77,109,0.35); border-radius: var(--radius); padding: 0.7rem 0.9rem; font-size: 0.74rem; line-height: 1.6; color: var(--text-dim); display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+.fout-detail summary { cursor: pointer; color: var(--accent3); font-size: 0.68rem; }
+.fout-detail table { border-collapse: collapse; margin-top: 0.4rem; font-size: 0.7rem; }
+.fout-detail th { text-align: left; color: var(--text-dimmer); font-weight: 400; padding: 0.15rem 0.8rem 0.15rem 0; vertical-align: top; white-space: nowrap; }
+.fout-detail td { word-break: break-word; }

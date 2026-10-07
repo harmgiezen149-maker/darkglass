@@ -235,7 +235,9 @@ function analyzeTone() {
     addMsg('assistant', (isMeerScene() ? t('dualPresetKlaar') : t('presetKlaar')) + (details ? ' (' + details + ')' : ''));
     if (vers) vers.checked = false;
   }).catch(function(e) {
-    document.getElementById('outputContent').innerHTML = onderzoekHtml + '<p style="color:var(--accent2)">' + esc(t('fout') + e.message) + '</p>';
+    // De uitleg staat al in het detailblok; in de rode regel alleen de fout zelf.
+    var melding = e.detail && e.detail.uitleg ? e.message.split(' — ')[0] : e.message;
+    document.getElementById('outputContent').innerHTML = onderzoekHtml + '<p style="color:var(--accent2)">' + esc(t('fout') + melding) + '</p>' + foutDetailHtml(e.detail);
   }).then(function() {
     bezig = false;
     btn.disabled = false;
