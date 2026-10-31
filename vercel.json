@@ -35,5 +35,11 @@
       "path": "/api/blocks-sync?cron=1",
       "schedule": "17 6 * * 1"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/mcp/:sleutel",
+      "destination": "/api/mcp?sleutel=:sleutel"
+    }
   ]
 }

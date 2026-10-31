@@ -41,6 +41,32 @@
       </div>
     </section>
 
+    <section class="panel" id="claudePanel" style="display:none">
+      <div class="panel-label">CLAUDE-KOPPELING</div>
+      <div class="sessie-tekst">
+        Laat je AI-dorp op claude.ai bij darkglass: presets, setlists en je rig lezen, en &mdash; pas nadat jij in het dorp op <strong>Goedkeuren</strong> drukt &mdash; een setlist maken of aanpassen.
+        Er wordt niets verwijderd, presets blijven zoals ze zijn, en de koppeling start nooit een analyse (die kost API-geld).
+      </div>
+      <div id="claudeGeen" style="display:none; margin-top:0.75rem">
+        <button class="actie-btn actie-primair" onclick="claudeNieuw()">KOPPELING AANMAKEN</button>
+      </div>
+      <div id="claudeWel" style="display:none; margin-top:0.75rem">
+        <div class="tegel-info">ADRES VOOR CLAUDE.AI</div>
+        <code id="claudeAdres" style="display:block; word-break:break-all; font-family:var(--font-b, monospace); font-size:0.72rem; padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:4px; margin:0.35rem 0 0.6rem; color:var(--text)"></code>
+        <div class="acties-rij">
+          <button class="actie-btn actie-primair" id="claudeKopieer" onclick="claudeKopieer()">ADRES KOPIËREN</button>
+          <button class="actie-btn" onclick="claudeNieuw()">NIEUWE SLEUTEL</button>
+          <button class="actie-btn" onclick="claudeIntrekken()">INTREKKEN</button>
+        </div>
+        <ol class="sessie-tekst" style="margin:0.6rem 0 0; padding-left:1.1rem">
+          <li>Ga op claude.ai naar <strong>Instellingen &rarr; Connectors</strong> en kies <strong>Aangepaste connector toevoegen</strong>.</li>
+          <li>Naam: <strong>Darkglass</strong> (precies zo, het dorp zoekt op deze naam).</li>
+          <li>Plak het adres hierboven en sla op.</li>
+        </ol>
+        <div class="tegel-info" style="margin-top:0.4rem">Het adres is de sleutel: deel het met niemand. Uitgelekt? Maak een nieuwe; de oude werkt dan meteen niet meer.</div>
+      </div>
+    </section>
+
     <div class="tegels">
       <a class="tegel" href="/blocks.html" id="tegelBlokken">
         <div class="tegel-kop"><span class="tegel-titel">BLOKKEN</span><span class="update-badge" id="updateBadge" style="display:none">UPDATE</span><span class="tegel-icoon">&#9638;</span></div>
@@ -89,8 +115,42 @@
       fetch('/api/login', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' }).then(laadAlles);
     }
 
+    // ---------- Claude-koppeling (alleen beheerders) ----------
+    function toonClaude(sleutel) {
+      document.getElementById('claudeGeen').style.display = sleutel ? 'none' : '';
+      document.getElementById('claudeWel').style.display = sleutel ? '' : 'none';
+      document.getElementById('claudeAdres').textContent = sleutel ? location.origin + '/api/mcp/' + sleutel : '';
+    }
+    function laadClaude(s) {
+      var paneel = document.getElementById('claudePanel');
+      if (!s || !s.admin) { paneel.style.display = 'none'; return; }
+      paneel.style.display = '';
+      fetch('/api/claude-koppeling', { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : { sleutel: null }; })
+        .then(function(d) { toonClaude(d.sleutel); }).catch(function() {});
+    }
+    function claudeVerzoek(methode) {
+      return fetch('/api/claude-koppeling', { method: methode, headers: { 'Content-Type': 'application/json' }, body: '{}', credentials: 'same-origin' })
+        .then(function(r) { return r.json(); });
+    }
+    function claudeNieuw() {
+      if (document.getElementById('claudeAdres').textContent && !confirm('Nieuwe sleutel maken? Het oude adres werkt dan meteen niet meer; zet het nieuwe in claude.ai.')) return;
+      claudeVerzoek('POST').then(function(d) { toonClaude(d.sleutel); });
+    }
+    function claudeIntrekken() {
+      if (!confirm('Koppeling intrekken? Claude kan daarna niet meer bij darkglass.')) return;
+      claudeVerzoek('DELETE').then(function() { toonClaude(null); });
+    }
+    function claudeKopieer() {
+      var knop = document.getElementById('claudeKopieer');
+      navigator.clipboard.writeText(document.getElementById('claudeAdres').textContent).then(function() {
+        knop.textContent = 'GEKOPIEERD'; setTimeout(function() { knop.textContent = 'ADRES KOPIËREN'; }, 2000);
+      }).catch(function() { alert('Kopiëren lukte niet. Selecteer het adres en kopieer het met de hand.'); });
+    }
+
     function laadAlles() {
       laadStatus().then(function(s) {
+        laadClaude(s);
         // Alleen voor beheerders: is er een update van de blokken? (gewone fetch, geen loginvenster)
         if (!s.admin) { document.getElementById('updateBadge').style.display = 'none'; return; }
         fetch('/api/blocks-sync', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {

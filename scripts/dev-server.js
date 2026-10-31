@@ -29,6 +29,9 @@ function vercelRes(res) {
 
 var server = httpMod.createServer(function(req, res) {
   var url = new URL(req.url, 'http://localhost');
+  // Zelfde omzetting als de rewrite in vercel.json: /api/mcp/<sleutel> → /api/mcp?sleutel=<sleutel>
+  var mcpPad = /^\/api\/mcp\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
+  if (mcpPad) { url.pathname = '/api/mcp'; url.searchParams.set('sleutel', mcpPad[1]); }
   if (url.pathname.indexOf('/api/') === 0) {
     var naam = url.pathname.slice(5).replace(/[^a-z0-9-]/gi, '');
     var bestand = path.join(ROOT, 'api', naam + '.js');
