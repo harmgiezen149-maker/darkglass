@@ -80,3 +80,15 @@ test('claude: de koppeling beheren kan alleen een beheerder', async function() {
   assert.equal(r.statusCode, 401);
   delete process.env.ADMIN_WACHTWOORD;
 });
+
+test('claude: snelheidslimiet per uur geeft 429', async function() {
+  await vulRedis();
+  process.env.LIMIET_CLAUDE_DEUR_PER_UUR = '3';
+  try {
+    var k = await sleutel.maak();
+    for (var i = 0; i < 3; i++) assert.equal((await roepMcp(k, rpc('tools/list'))).statusCode, 200);
+    var te = await roepMcp(k, rpc('tools/list'));
+    assert.equal(te.statusCode, 429);
+    assert.equal((await roepMcp('verkeerd', rpc('tools/list'))).statusCode, 404, 'een verkeerde sleutel blijft een kale 404');
+  } finally { delete process.env.LIMIET_CLAUDE_DEUR_PER_UUR; }
+});

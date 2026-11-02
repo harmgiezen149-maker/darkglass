@@ -3,6 +3,7 @@ var redis = require('./_lib/redis');
 var sleutel = require('./_lib/claudesleutel');
 var mcp = require('./_lib/mcp');
 var gereedschap = require('./_lib/claude-gereedschap');
+var limiet = require('./_lib/ratelimit');
 
 // De deur voor Claude: een MCP-server op /api/mcp/<sleutel> (vercel.json zet
 // dat om naar /api/mcp?sleutel=…). De sleutel in het adres is het slot; klopt
@@ -19,6 +20,13 @@ module.exports = async function handler(req, res) {
   var q = http.query(req);
   if (!(await sleutel.geldig(q.sleutel))) { res.setHeader('Cache-Control', 'no-store'); return res.status(404).json({}); }
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return http.stuur(res, 405, { error: 'Alleen POST' }); }
+  // Snelheidslimiet (verbeterplan A6): lekt het adres uit, dan hooguit zoveel verzoeken per uur.
+  var perUur = parseInt(process.env.LIMIET_CLAUDE_DEUR_PER_UUR || '', 10) > 0 ? parseInt(process.env.LIMIET_CLAUDE_DEUR_PER_UUR, 10) : 300;
+  var uur = Math.floor(Date.now() / 3600000);
+  if (!(await limiet.tel('claude-deur:' + uur, perUur, 3700)).ok) {
+    res.setHeader('Retry-After', String(Math.max(1, Math.ceil(((uur + 1) * 3600000 - Date.now()) / 1000))));
+    return http.stuur(res, 429, { jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Te veel verzoeken dit uur. Probeer het straks opnieuw.' } });
+  }
   var body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { return http.stuur(res, 400, { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Geen geldige JSON' } }); } }
   var uit = await mcp.verwerk(body, gereedschap.maak(), INFO);
